@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "filinglens-copilot"
+version = "0.1.0"
+description = "Evidence-first annual report research copilot"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pypdf>=5.0,<7.0",
+  "python-dotenv>=1.0,<2.0",
+  "streamlit>=1.40,<2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<10.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["filinglens*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
