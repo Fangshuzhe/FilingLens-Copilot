@@ -14,10 +14,19 @@ FilingLens Copilot 将上市公司年报转化为有出处、可追问、可导�
 - SQLite 本地存储，无需 MySQL
 - 中文友好的 BM25 证据检索
 - 兼容 OpenAI Chat Completions 接口的大模型问答
-- 结构化研究底稿
+- 八维度结构化研究底稿
 - 结论与原文页码绑定
 - 引用校验与证据不足拒答
-- 研究板收藏与 Markdown 简报导出
+- PDF 原页预览与引用文本高亮
+- 财务事实定位与原文表格提取
+- 连续年度年报变化雷达
+- 双公司研究对比
+- 研究板收藏与 Markdown/HTML 简报导出
+
+当前限制：
+
+- 扫描版 PDF 尚未接入 OCR，上传后会提示缺少文本层。
+- 财务事实卡用于定位原文披露，不会自动合并不同口径的数据。
 
 ## 运行
 
@@ -57,12 +66,15 @@ python -m pytest
 app.py                    Streamlit 界面
 filinglens/
   db.py                   SQLite 数据层
+  financial.py            财务事实定位
   llm.py                  OpenAI 兼容模型客户端
   models.py               核心数据模型
   parser.py               PDF 解析与切分
-  reporting.py            Markdown 报告导出
+  pdf_preview.py          PDF 原页渲染与引用高亮
+  reporting.py            Markdown/HTML 报告导出
   retrieval.py            中文 BM25 检索
-  service.py              问答、证据校验与拒答
+  service.py              问答、变化分析、公司对比与证据校验
+  tables.py               PDF 表格提取
 tests/                    自动化测试
 data/                     本地数据库、上传文件和运行时数据
 ```

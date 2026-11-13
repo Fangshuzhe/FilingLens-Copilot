@@ -9,7 +9,9 @@ description = "Evidence-first annual report research copilot"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+  "markdown>=3.7,<4.0",
   "pypdf>=5.0,<7.0",
+  "PyMuPDF>=1.24,<2.0",
   "python-dotenv>=1.0,<2.0",
   "streamlit>=1.40,<2.0",
 ]

@@ -57,10 +57,40 @@ class Claim:
 
 
 @dataclass(frozen=True)
+class AnswerSection:
+    title: str
+    claims: list[Claim] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class ResearchAnswer:
     status: str
     summary: str
     claims: list[Claim]
+    evidence: list[Evidence]
+    missing: list[str] = field(default_factory=list)
+    raw_response: str = ""
+    sections: list[AnswerSection] = field(default_factory=list)
+
+    @property
+    def is_answered(self) -> bool:
+        return self.status == "answered"
+
+
+@dataclass(frozen=True)
+class ChangeItem:
+    dimension: str
+    previous: str
+    current: str
+    change_type: str
+    evidence_ids: list[str]
+
+
+@dataclass(frozen=True)
+class ChangeReport:
+    status: str
+    summary: str
+    changes: list[ChangeItem]
     evidence: list[Evidence]
     missing: list[str] = field(default_factory=list)
     raw_response: str = ""

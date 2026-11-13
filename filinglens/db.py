@@ -158,6 +158,25 @@ class Database:
             for row in rows
         ]
 
+    def list_pages(self, report_id: int) -> list[PageText]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT page_number, text
+                FROM pages
+                WHERE report_id = ?
+                ORDER BY page_number
+                """,
+                (report_id,),
+            ).fetchall()
+        return [
+            PageText(
+                page_number=int(row["page_number"]),
+                text=str(row["text"]),
+            )
+            for row in rows
+        ]
+
     def add_insight(
         self,
         *,
