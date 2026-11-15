@@ -98,3 +98,25 @@ def test_list_conversations_keeps_old_chats_and_latest_first(tmp_path):
     assert conversations[1].title == "第一段对话"
     assert conversations[1].message_count == 2
 
+
+def test_delete_conversation_removes_only_selected_chat(tmp_path):
+    database = Database(tmp_path / "chat.db")
+    first_id = "a" * 32
+    second_id = "b" * 32
+    database.add_chat_message(
+        conversation_id=first_id,
+        role="user",
+        content="保留",
+    )
+    database.add_chat_message(
+        conversation_id=second_id,
+        role="user",
+        content="删除",
+    )
+
+    deleted = database.delete_conversation(second_id)
+
+    assert deleted == 1
+    assert database.list_chat_messages(second_id) == []
+    assert len(database.list_chat_messages(first_id)) == 1
+

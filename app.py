@@ -402,15 +402,21 @@ def render_general_chat(
             {"role": message.role, "content": message.content}
             for message in messages
         ]
-        with st.spinner("正在思考..."):
+        _render_chat_message("user", question)
+        with st.chat_message("assistant", avatar=str(LOGO_MARK_PATH)):
             try:
-                response = service.general_chat(
-                    question=question,
-                    history=prior_messages,
+                response = st.write_stream(
+                    service.general_chat_stream(
+                        question=question,
+                        history=prior_messages,
+                    )
                 )
             except (LLMConfigurationError, LLMResponseError, ValueError) as exc:
                 st.error(str(exc))
                 return
+        if isinstance(response, list):
+            response = "".join(str(item) for item in response)
+        response = str(response)
         database.add_chat_message(
             conversation_id=conversation_id,
             role="user",
@@ -860,14 +866,34 @@ def render_conversation_history(current_conversation_id: str) -> None:
             label = f"当前 · {title}"
         else:
             label = title
-        if st.sidebar.button(
-            label,
-            key=f"conversation-{conversation.conversation_id}",
-            use_container_width=True,
-        ):
-            st.query_params["chat"] = conversation.conversation_id
-            st.session_state["main-view"] = "通用对话"
-            st.rerun()
+        label_column, menu_column = st.sidebar.columns([5, 1])
+        with label_column:
+            if st.button(
+                label,
+                key=f"conversation-{conversation.conversation_id}",
+                use_container_width=True,
+            ):
+                st.query_params["chat"] = conversation.conversation_id
+                st.session_state["main-view"] = "通用对话"
+                st.rerun()
+        with menu_column:
+            with st.popover("⋯", use_container_width=True):
+                st.caption(title)
+                if st.button(
+                    "删除对话",
+                    key=f"delete-{conversation.conversation_id}",
+                    type="primary",
+                    use_container_width=True,
+                ):
+                    get_database().delete_conversation(
+                        conversation.conversation_id
+                    )
+                    if (
+                        conversation.conversation_id
+                        == current_conversation_id
+                    ):
+                        st.query_params["chat"] = uuid4().hex
+                    st.rerun()
 
 
 def render_sidebar_navigation(

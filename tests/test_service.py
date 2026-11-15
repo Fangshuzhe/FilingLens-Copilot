@@ -12,6 +12,13 @@ class SequenceLLM:
         self.calls.append({"system": system, "user": user})
         return self.responses.pop(0)
 
+    def stream(self, *, system, user):
+        self.calls.append({"system": system, "user": user})
+        response = self.responses.pop(0)
+        midpoint = len(response) // 2
+        yield response[:midpoint]
+        yield response[midpoint:]
+
 
 def build_service(tmp_path, responses):
     database = Database(tmp_path / "test.db")
@@ -118,6 +125,24 @@ def test_developer_question_returns_required_names_without_llm(tmp_path):
     assert "Fang Shuzhe" in answer
     assert "Wu Diwen" in answer
     assert not llm.calls
+
+
+def test_general_chat_stream_yields_model_chunks(tmp_path):
+    service, _, llm = build_service(
+        tmp_path,
+        ["第一段第二段"],
+    )
+
+    chunks = list(
+        service.general_chat_stream(
+            question="解释商业模式",
+            history=[],
+        )
+    )
+
+    assert "".join(chunks) == "第一段第二段"
+    assert len(chunks) == 2
+    assert llm.calls[0]["system"]
 
 
 def test_generate_structured_company_brief(tmp_path):

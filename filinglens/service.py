@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import time
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
 from filinglens.db import Database
@@ -236,21 +238,7 @@ class FilingLensService:
         if direct_response:
             return direct_response
 
-        recent_history = (history or [])[-12:]
-        transcript_lines = []
-        for message in recent_history:
-            role = "用户" if message.get("role") == "user" else "助手"
-            content = str(message.get("content", "")).strip()
-            if content:
-                transcript_lines.append(f"{role}：{content[:2000]}")
-
-        user_prompt = question
-        if transcript_lines:
-            user_prompt = (
-                "以下是最近的对话历史，仅用于理解上下文：\n\n"
-                + "\n\n".join(transcript_lines)
-                + f"\n\n用户当前问题：{question}"
-            )
+        user_prompt = _build_general_user_prompt(question, history)
 
         response = self.llm.complete(
             system=GENERAL_CHAT_SYSTEM_PROMPT,
@@ -259,6 +247,39 @@ class FilingLensService:
         if not response:
             raise ValueError("模型没有返回有效内容")
         return response
+
+    def general_chat_stream(
+        self,
+        *,
+        question: str,
+        history: list[dict[str, str]] | None = None,
+    ) -> Iterator[str]:
+        question = question.strip()
+        if not question:
+            raise ValueError("question cannot be empty")
+
+        direct_response = _identity_response(question)
+        if direct_response:
+            yield from _expand_stream_chunks((direct_response,))
+            return
+
+        user_prompt = _build_general_user_prompt(question, history)
+        if hasattr(self.llm, "stream"):
+            yield from _expand_stream_chunks(
+                self.llm.stream(
+                    system=GENERAL_CHAT_SYSTEM_PROMPT,
+                    user=user_prompt,
+                )
+            )
+            return
+
+        response = self.llm.complete(
+            system=GENERAL_CHAT_SYSTEM_PROMPT,
+            user=user_prompt,
+        ).strip()
+        if not response:
+            raise ValueError("模型没有返回有效内容")
+        yield from _expand_stream_chunks((response,))
 
     def ask(
         self,
@@ -830,4 +851,39 @@ def _identity_response(question: str) -> str | None:
     if any(marker in normalized for marker in identity_markers):
         return IDENTITY_RESPONSE
     return None
+
+
+def _build_general_user_prompt(
+    question: str,
+    history: list[dict[str, str]] | None,
+) -> str:
+    recent_history = (history or [])[-12:]
+    transcript_lines = []
+    for message in recent_history:
+        role = "用户" if message.get("role") == "user" else "助手"
+        content = str(message.get("content", "")).strip()
+        if content:
+            transcript_lines.append(f"{role}：{content[:2000]}")
+
+    if not transcript_lines:
+        return question
+    return (
+        "以下是最近的对话历史，仅用于理解上下文：\n\n"
+        + "\n\n".join(transcript_lines)
+        + f"\n\n用户当前问题：{question}"
+    )
+
+
+def _expand_stream_chunks(
+    chunks: Iterable[str],
+    *,
+    chunk_size: int = 24,
+) -> Iterator[str]:
+    for chunk in chunks:
+        if len(chunk) <= chunk_size:
+            yield chunk
+            continue
+        for start in range(0, len(chunk), chunk_size):
+            yield chunk[start : start + chunk_size]
+            time.sleep(0.01)
 

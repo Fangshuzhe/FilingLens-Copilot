@@ -5,6 +5,7 @@ import os
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from collections.abc import Iterator
 
 
 class LLMConfigurationError(RuntimeError):
@@ -53,28 +54,7 @@ class OpenAICompatibleLLM:
         self.settings = settings
 
     def complete(self, *, system: str, user: str) -> str:
-        endpoint = self.settings.base_url.rstrip("/")
-        if not endpoint.endswith("/chat/completions"):
-            endpoint = f"{endpoint}/chat/completions"
-
-        payload = {
-            "model": self.settings.model,
-            "temperature": 0.1,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-        }
-        request = urllib.request.Request(
-            endpoint,
-            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers={
-                "Authorization": f"Bearer {self.settings.api_key}",
-                "Content-Type": "application/json",
-                "User-Agent": "FilingLens-Copilot/0.1",
-            },
-            method="POST",
-        )
+        request = self._build_request(system=system, user=user, stream=False)
 
         try:
             with urllib.request.urlopen(
@@ -99,4 +79,65 @@ class OpenAICompatibleLLM:
         if not isinstance(content, str) or not content.strip():
             raise LLMResponseError("模型返回了空内容。")
         return content.strip()
+
+    def stream(self, *, system: str, user: str) -> Iterator[str]:
+        request = self._build_request(system=system, user=user, stream=True)
+        emitted = False
+        try:
+            with urllib.request.urlopen(
+                request,
+                timeout=self.settings.timeout_seconds,
+            ) as response:
+                for raw_line in response:
+                    line = raw_line.decode("utf-8", errors="replace").strip()
+                    if not line or line.startswith(":"):
+                        continue
+                    if not line.startswith("data:"):
+                        continue
+                    data = line[5:].strip()
+                    if data == "[DONE]":
+                        break
+                    try:
+                        payload = json.loads(data)
+                        delta = payload["choices"][0].get("delta", {})
+                        content = delta.get("content")
+                    except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+                        continue
+                    if isinstance(content, str) and content:
+                        emitted = True
+                        yield content
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:500]
+            raise LLMResponseError(
+                f"模型请求失败（HTTP {exc.code}）：{detail}"
+            ) from exc
+        except urllib.error.URLError as exc:
+            raise LLMResponseError(f"模型连接失败：{exc.reason}") from exc
+
+        if not emitted:
+            raise LLMResponseError("模型没有返回流式内容。")
+
+    def _build_request(self, *, system: str, user: str, stream: bool):
+        endpoint = self.settings.base_url.rstrip("/")
+        if not endpoint.endswith("/chat/completions"):
+            endpoint = f"{endpoint}/chat/completions"
+        payload = {
+            "model": self.settings.model,
+            "temperature": 0.1,
+            "stream": stream,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        }
+        return urllib.request.Request(
+            endpoint,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.settings.api_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "FilingLens-Copilot/0.1",
+            },
+            method="POST",
+        )
 

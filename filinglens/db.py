@@ -326,6 +326,14 @@ class Database:
             for row in rows
         ]
 
+    def delete_conversation(self, conversation_id: str) -> int:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM chat_messages WHERE conversation_id = ?",
+                (conversation_id,),
+            )
+            return int(cursor.rowcount)
+
     @staticmethod
     def _row_to_report(row: sqlite3.Row) -> Report:
         return Report(
