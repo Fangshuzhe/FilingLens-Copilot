@@ -130,6 +130,7 @@ st.markdown(
     [data-testid="stChatMessage"] {
         background: transparent;
         padding: 0.35rem 0;
+        width: 100%;
     }
     [data-testid="stChatMessageContent"] {
         font-size: 0.96rem;
@@ -369,14 +370,16 @@ def render_general_chat(service: FilingLensService) -> None:
 
 
 def _render_chat_message(role: str, content: str) -> None:
-    if role == "user":
-        _, message_column = st.columns([0.72, 2.28], vertical_alignment="top")
-    else:
+    if role == "assistant":
         message_column, _ = st.columns([2.28, 0.72], vertical_alignment="top")
-
-    with message_column:
-        with st.chat_message(role):
-            st.markdown(content)
+        with message_column:
+            with st.chat_message(role, avatar=str(LOGO_MARK_PATH)):
+                st.markdown(content)
+    else:
+        _, message_column = st.columns([0.72, 2.28], vertical_alignment="top")
+        with message_column:
+            with st.chat_message(role):
+                st.markdown(content)
 
 
 def render_brief(
