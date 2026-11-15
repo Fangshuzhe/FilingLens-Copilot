@@ -109,3 +109,12 @@ class Insight:
     kind: str
     created_at: str
 
+
+@dataclass(frozen=True)
+class ChatMessage:
+    id: int
+    conversation_id: str
+    role: str
+    content: str
+    created_at: str
+

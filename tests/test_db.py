@@ -44,3 +44,25 @@ def test_database_round_trip(tmp_path):
     assert insights[0].id == insight_id
     assert insights[0].evidence[0].text == evidence.text
 
+
+def test_chat_messages_persist_by_conversation(tmp_path):
+    database = Database(tmp_path / "chat.db")
+    conversation_id = "a" * 32
+
+    database.add_chat_message(
+        conversation_id=conversation_id,
+        role="user",
+        content="你好",
+    )
+    database.add_chat_message(
+        conversation_id=conversation_id,
+        role="assistant",
+        content="你好，我是 FilingLens。",
+    )
+
+    messages = database.list_chat_messages(conversation_id)
+
+    assert [message.role for message in messages] == ["user", "assistant"]
+    assert messages[0].content == "你好"
+    assert messages[1].content == "你好，我是 FilingLens。"
+

@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import os
+import re
 from pathlib import Path
 from uuid import uuid4
 
@@ -329,9 +330,13 @@ def render_download_pair(
         )
 
 
-def render_general_chat(service: FilingLensService) -> None:
-    state_key = "general-chat-messages"
-    messages = st.session_state.setdefault(state_key, [])
+def render_general_chat(
+    service: FilingLensService,
+    *,
+    conversation_id: str,
+) -> None:
+    database = get_database()
+    messages = database.list_chat_messages(conversation_id)
 
     if not messages:
         logo_uri = get_logo_data_uri()
@@ -347,13 +352,14 @@ def render_general_chat(service: FilingLensService) -> None:
         )
 
     for message in messages:
-        _render_chat_message(message["role"], message["content"])
+        _render_chat_message(message.role, message.content)
 
     question = st.chat_input("给 FilingLens 发送消息")
     if question:
-        prior_messages = list(messages)
-        messages.append({"role": "user", "content": question.strip()})
-        _render_chat_message("user", question)
+        prior_messages = [
+            {"role": message.role, "content": message.content}
+            for message in messages
+        ]
         with st.spinner("正在思考..."):
             try:
                 response = service.general_chat(
@@ -361,24 +367,28 @@ def render_general_chat(service: FilingLensService) -> None:
                     history=prior_messages,
                 )
             except (LLMConfigurationError, LLMResponseError, ValueError) as exc:
-                messages.pop()
                 st.error(str(exc))
                 return
-        messages.append({"role": "assistant", "content": response})
-        _render_chat_message("assistant", response)
-        st.session_state[state_key] = messages
+        database.add_chat_message(
+            conversation_id=conversation_id,
+            role="user",
+            content=question,
+        )
+        database.add_chat_message(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=response,
+        )
+        st.rerun()
 
 
 def _render_chat_message(role: str, content: str) -> None:
     if role == "assistant":
-        message_column, _ = st.columns([2.28, 0.72], vertical_alignment="top")
-        with message_column:
-            with st.chat_message(role, avatar=str(LOGO_MARK_PATH)):
-                st.markdown(content)
+        with st.chat_message(role, avatar=str(LOGO_MARK_PATH)):
+            st.markdown(content)
     else:
-        _, message_column = st.columns([0.72, 2.28], vertical_alignment="top")
-        with message_column:
-            with st.chat_message(role):
+        with st.container(horizontal_alignment="right"):
+            with st.chat_message(role, width="content"):
                 st.markdown(content)
 
 
@@ -774,7 +784,7 @@ def render_sidebar_brand() -> None:
         unsafe_allow_html=True,
     )
     if st.sidebar.button("新建对话", use_container_width=True):
-        st.session_state["general-chat-messages"] = []
+        st.query_params["chat"] = uuid4().hex
         st.session_state["main-view"] = "通用对话"
         st.rerun()
 
@@ -841,12 +851,17 @@ def main() -> None:
         st.error(f"模型初始化失败：{exc}")
         service = None
 
+    conversation_id = get_current_conversation_id()
+
     if not reports:
         st.sidebar.caption("上传年报后可解锁证据问答和研究工具。")
         if service is None:
             st.error("通用对话需要先配置大模型。")
         else:
-            render_general_chat(service)
+            render_general_chat(
+                service,
+                conversation_id=conversation_id,
+            )
         return
 
     report, view = render_sidebar_navigation(reports=reports)
@@ -859,7 +874,10 @@ def main() -> None:
         if service is None:
             st.error("通用对话需要先配置模型。")
         else:
-            render_general_chat(service)
+            render_general_chat(
+                service,
+                conversation_id=conversation_id,
+            )
     elif view == "研究底稿":
         st.subheader("研究底稿")
         if service is None:
@@ -925,6 +943,19 @@ def _selected_report_index(report_ids: list[int]) -> int:
     if selected_id in report_ids:
         return report_ids.index(selected_id)
     return 0
+
+
+def get_current_conversation_id() -> str:
+    value = st.query_params.get("chat")
+    if isinstance(value, list):
+        value = value[0] if value else ""
+    value = str(value or "").strip()
+    if re.fullmatch(r"[a-f0-9]{32}", value):
+        return value
+
+    conversation_id = uuid4().hex
+    st.query_params["chat"] = conversation_id
+    return conversation_id
 
 
 def _text_digest(text: str) -> str:

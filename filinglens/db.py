@@ -7,7 +7,15 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Iterator, Sequence
 
-from filinglens.models import Evidence, Insight, PageText, Report, StoredChunk, TextChunk
+from filinglens.models import (
+    ChatMessage,
+    Evidence,
+    Insight,
+    PageText,
+    Report,
+    StoredChunk,
+    TextChunk,
+)
 
 
 SCHEMA = """
@@ -50,6 +58,17 @@ CREATE TABLE IF NOT EXISTS insights (
     kind TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id TEXT NOT NULL,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation
+ON chat_messages(conversation_id, id);
 """
 
 
@@ -224,6 +243,47 @@ class Database:
                     for item in json.loads(row["evidence_json"])
                 ],
                 kind=str(row["kind"]),
+                created_at=str(row["created_at"]),
+            )
+            for row in rows
+        ]
+
+    def add_chat_message(
+        self,
+        *,
+        conversation_id: str,
+        role: str,
+        content: str,
+    ) -> int:
+        if role not in {"user", "assistant"}:
+            raise ValueError("role must be user or assistant")
+        with self.connect() as connection:
+            cursor = connection.execute(
+                """
+                INSERT INTO chat_messages(conversation_id, role, content)
+                VALUES (?, ?, ?)
+                """,
+                (conversation_id, role, content.strip()),
+            )
+            return int(cursor.lastrowid)
+
+    def list_chat_messages(self, conversation_id: str) -> list[ChatMessage]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT id, conversation_id, role, content, created_at
+                FROM chat_messages
+                WHERE conversation_id = ?
+                ORDER BY id
+                """,
+                (conversation_id,),
+            ).fetchall()
+        return [
+            ChatMessage(
+                id=int(row["id"]),
+                conversation_id=str(row["conversation_id"]),
+                role=str(row["role"]),
+                content=str(row["content"]),
                 created_at=str(row["created_at"]),
             )
             for row in rows
