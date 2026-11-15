@@ -52,6 +52,20 @@ SYSTEM_PROMPT = """
 }
 """.strip()
 
+GENERAL_CHAT_SYSTEM_PROMPT = """
+你是 FilingLens Copilot，一名企业研究和商业分析助手。
+
+你可以直接回答商业、公司研究、财务概念、产品、行业和数据分析相关问题。
+
+规则：
+1. 不要求用户先上传年报，也不要声称引用了用户尚未提供的年报。
+2. 区分一般知识、模型推断和确定事实。
+3. 对时效性强或可能变化的信息说明不确定性，不编造实时数据。
+4. 涉及财务指标时解释口径，不虚构具体公司数字。
+5. 用户后续上传年报并进入“证据问答”时，再严格使用年报证据回答。
+6. 使用清晰、直接的中文回答。
+""".strip()
+
 BRIEF_SYSTEM_PROMPT = """
 你是 FilingLens Copilot，一名严谨的企业年报研究助手。
 
@@ -187,6 +201,40 @@ class FilingLensService:
         self.database = database
         self.llm = llm
         self.retriever = retriever or BM25Retriever()
+
+    def general_chat(
+        self,
+        *,
+        question: str,
+        history: list[dict[str, str]] | None = None,
+    ) -> str:
+        question = question.strip()
+        if not question:
+            raise ValueError("question cannot be empty")
+
+        recent_history = (history or [])[-12:]
+        transcript_lines = []
+        for message in recent_history:
+            role = "用户" if message.get("role") == "user" else "助手"
+            content = str(message.get("content", "")).strip()
+            if content:
+                transcript_lines.append(f"{role}：{content[:2000]}")
+
+        user_prompt = question
+        if transcript_lines:
+            user_prompt = (
+                "以下是最近的对话历史，仅用于理解上下文：\n\n"
+                + "\n\n".join(transcript_lines)
+                + f"\n\n用户当前问题：{question}"
+            )
+
+        response = self.llm.complete(
+            system=GENERAL_CHAT_SYSTEM_PROMPT,
+            user=user_prompt,
+        ).strip()
+        if not response:
+            raise ValueError("模型没有返回有效内容")
+        return response
 
     def ask(
         self,

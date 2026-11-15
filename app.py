@@ -227,6 +227,56 @@ def render_download_pair(
         )
 
 
+def render_general_chat(service: FilingLensService) -> None:
+    state_key = "general-chat-messages"
+    messages = st.session_state.setdefault(state_key, [])
+
+    title_column, action_column = st.columns([5, 1])
+    with title_column:
+        st.subheader("通用对话")
+        st.caption("可直接讨论商业、财务和公司研究问题，不依赖年报上传。")
+    with action_column:
+        if st.button("清空对话", key="general-chat-clear"):
+            st.session_state[state_key] = []
+            st.rerun()
+
+    for message in messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    with st.form("general-chat-form", clear_on_submit=True):
+        question = st.text_area(
+            "输入问题",
+            placeholder="例如：如何判断一家公司的商业模式是否健康？",
+            height=100,
+        )
+        submitted = st.form_submit_button("发送", type="primary")
+
+    if submitted:
+        if not question.strip():
+            st.warning("请输入问题。")
+            return
+
+        prior_messages = list(messages)
+        messages.append({"role": "user", "content": question.strip()})
+        with st.spinner("正在思考..."):
+            try:
+                response = service.general_chat(
+                    question=question,
+                    history=prior_messages,
+                )
+            except (LLMConfigurationError, LLMResponseError, ValueError) as exc:
+                messages.pop()
+                st.error(str(exc))
+                return
+        messages.append({"role": "assistant", "content": response})
+        st.session_state[state_key] = messages
+        st.rerun()
+
+    if not messages:
+        st.info("无需上传年报，直接输入问题即可开始。")
+
+
 def render_brief(
     service: FilingLensService,
     report: Report,
@@ -615,8 +665,21 @@ def main() -> None:
     render_upload()
 
     reports = database.list_reports()
+    try:
+        service = get_service()
+    except LLMConfigurationError as exc:
+        st.warning(f"{exc}。上传和解析仍可使用。")
+        service = None
+    except Exception as exc:
+        st.error(f"模型初始化失败：{exc}")
+        service = None
+
     if not reports:
-        st.info("请先在左侧上传一份年报 PDF。")
+        st.info("不上传年报也可以直接对话；上传后可启用证据问答和研究报告功能。")
+        if service is None:
+            st.warning("通用对话需要先配置大模型。")
+        else:
+            render_general_chat(service)
         return
 
     reports_by_id = {item.id: item for item in reports}
@@ -641,17 +704,9 @@ def main() -> None:
     columns[2].metric("页数", report.page_count)
     columns[3].metric("检索片段", len(chunks))
 
-    try:
-        service = get_service()
-    except LLMConfigurationError as exc:
-        st.warning(f"{exc}。上传、解析和财务事实提取仍可使用。")
-        service = None
-    except Exception as exc:
-        st.error(f"模型初始化失败：{exc}")
-        service = None
-
     tabs = st.tabs(
         [
+            "通用对话",
             "公司研究底稿",
             "证据问答",
             "财务事实",
@@ -662,17 +717,22 @@ def main() -> None:
     )
     with tabs[0]:
         if service is None:
+            st.info("配置模型后可直接进行通用对话。")
+        else:
+            render_general_chat(service)
+    with tabs[1]:
+        if service is None:
             st.info("配置模型后可生成结构化研究底稿。")
         else:
             render_brief(service, report, reports_by_id)
-    with tabs[1]:
+    with tabs[2]:
         if service is None:
             st.info("配置模型后可进行带证据引用的问答。")
         else:
             render_research_chat(service, report, reports_by_id)
-    with tabs[2]:
-        render_financial_facts(report, reports_by_id)
     with tabs[3]:
+        render_financial_facts(report, reports_by_id)
+    with tabs[4]:
         if service is None:
             st.info("配置模型后可分析连续年度年报变化。")
         else:
@@ -682,7 +742,7 @@ def main() -> None:
                 reports,
                 reports_by_id,
             )
-    with tabs[4]:
+    with tabs[5]:
         if service is None:
             st.info("配置模型后可生成双公司对比。")
         else:
@@ -692,7 +752,7 @@ def main() -> None:
                 reports,
                 reports_by_id,
             )
-    with tabs[5]:
+    with tabs[6]:
         render_research_board(report, reports_by_id)
 
     with st.sidebar.expander("当前数据"):

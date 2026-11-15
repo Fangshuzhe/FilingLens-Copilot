@@ -80,6 +80,25 @@ def test_insufficient_evidence_skips_llm(tmp_path):
     assert not llm.calls
 
 
+def test_general_chat_works_without_report_context(tmp_path):
+    service, _, llm = build_service(
+        tmp_path,
+        ["毛利率等于毛利除以营业收入。"],
+    )
+
+    answer = service.general_chat(
+        question="毛利率怎么计算？",
+        history=[
+            {"role": "user", "content": "我在做公司研究。"},
+            {"role": "assistant", "content": "可以从商业模式开始。"},
+        ],
+    )
+
+    assert answer == "毛利率等于毛利除以营业收入。"
+    assert "用户当前问题：毛利率怎么计算？" in llm.calls[0]["user"]
+    assert "我在做公司研究" in llm.calls[0]["user"]
+
+
 def test_generate_structured_company_brief(tmp_path):
     service, report_id, _ = build_service(
         tmp_path,
