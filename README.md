@@ -1,5 +1,7 @@
 # FilingLens Copilot
 
+![FilingLens logo](assets/filinglens-logo.png)
+
 Evidence-first annual report research copilot.
 
 FilingLens Copilot 将上市公司年报转化为有出处、可追问、可导出的研究结论。
@@ -84,6 +86,13 @@ data/                     本地数据库、上传文件和运行时数据
 ## 产品文档
 
 - [产品方案](企业年报研究Copilot项目方案.md)
+
+## 品牌资产
+
+- `assets/filinglens-mark.svg`：应用图标矢量源文件
+- `assets/filinglens-logo.svg`：横向品牌组合矢量源文件
+- `assets/filinglens-logo-inverse.svg`：深色背景版本
+- `assets/*.png`：GitHub 和文档预览版本
 
 ## 产品边界
 

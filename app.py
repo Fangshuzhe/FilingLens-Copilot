@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import os
 from pathlib import Path
@@ -44,6 +45,7 @@ load_dotenv()
 DATA_DIR = Path(os.getenv("FILINGLENS_DATA_DIR", "data"))
 UPLOAD_DIR = DATA_DIR / "uploads"
 DB_PATH = DATA_DIR / "filinglens.db"
+LOGO_MARK_PATH = Path(__file__).parent / "assets" / "filinglens-mark.svg"
 
 st.set_page_config(
     page_title="FilingLens Copilot",
@@ -84,16 +86,9 @@ st.markdown(
         letter-spacing: -0.02em;
     }
     .fl-logo {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
         width: 28px;
         height: 28px;
-        border-radius: 9px;
-        color: white;
-        background: #4D6BFE;
-        font-size: 0.9rem;
-        font-weight: 800;
+        display: block;
     }
     .fl-label {
         margin: 1.1rem 0 0.35rem 0;
@@ -112,18 +107,11 @@ st.markdown(
         text-align: center;
     }
     .fl-welcome-mark {
-        display: flex;
-        align-items: center;
-        justify-content: center;
         width: 52px;
         height: 52px;
         margin-bottom: 22px;
-        border-radius: 16px;
-        color: white;
-        background: #4D6BFE;
-        font-size: 1.35rem;
-        font-weight: 800;
         box-shadow: 0 8px 24px rgba(77, 107, 254, 0.18);
+        border-radius: 16px;
     }
     .fl-welcome h1 {
         margin: 0;
@@ -187,6 +175,11 @@ def get_page_image(
         page_number=page_number,
         quote=quote,
     )
+
+
+def get_logo_data_uri() -> str:
+    encoded = base64.b64encode(LOGO_MARK_PATH.read_bytes()).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
 
 
 def render_evidence(
@@ -340,10 +333,11 @@ def render_general_chat(service: FilingLensService) -> None:
     messages = st.session_state.setdefault(state_key, [])
 
     if not messages:
+        logo_uri = get_logo_data_uri()
         st.markdown(
-            """
+            f"""
             <div class="fl-welcome">
-              <div class="fl-welcome-mark">F</div>
+              <img class="fl-welcome-mark" src="{logo_uri}" alt="FilingLens">
               <h1>有什么可以帮你研究？</h1>
               <p>直接讨论商业模式、财务指标、行业研究或数据分析。上传年报后，也可以切换到证据问答和研究工具。</p>
             </div>
@@ -766,10 +760,11 @@ def render_upload(*, expanded: bool) -> None:
 
 
 def render_sidebar_brand() -> None:
+    logo_uri = get_logo_data_uri()
     st.sidebar.markdown(
-        """
+        f"""
         <div class="fl-brand">
-          <span class="fl-logo">F</span>
+          <img class="fl-logo" src="{logo_uri}" alt="FilingLens">
           <span>FilingLens</span>
         </div>
         """,
