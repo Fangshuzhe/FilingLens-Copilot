@@ -44,6 +44,26 @@ from filinglens.tables import extract_tables
 
 load_dotenv()
 
+
+def apply_streamlit_secrets() -> None:
+    keys = (
+        "LLM_BASE_URL",
+        "LLM_API_KEY",
+        "LLM_MODEL",
+        "LLM_TIMEOUT_SECONDS",
+        "FILINGLENS_DATA_DIR",
+    )
+    try:
+        secrets = st.secrets
+    except Exception:
+        return
+    for key in keys:
+        if key not in os.environ and key in secrets:
+            os.environ[key] = str(secrets[key])
+
+
+apply_streamlit_secrets()
+
 DATA_DIR = Path(os.getenv("FILINGLENS_DATA_DIR", "data"))
 UPLOAD_DIR = DATA_DIR / "uploads"
 DB_PATH = DATA_DIR / "filinglens.db"

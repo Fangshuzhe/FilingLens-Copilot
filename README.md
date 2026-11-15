@@ -61,6 +61,29 @@ streamlit run app.py
 
 也可以复制 `.env.example` 为 `.env` 后填写模型配置。
 
+## Streamlit Community Cloud
+
+部署参数：
+
+- Repository：`Fangshuzhe/FilingLens-Copilot`
+- Branch：`main`
+- Main file path：`app.py`
+- Python：`3.12`
+
+在 Streamlit Cloud 的 App settings → Secrets 中填写：
+
+```toml
+LLM_BASE_URL = "https://openrouter.ai/api/v1"
+LLM_API_KEY = "replace-with-your-openrouter-key"
+LLM_MODEL = "baidu/ernie-5.5-flash-preview:free"
+LLM_TIMEOUT_SECONDS = "120"
+FILINGLENS_DATA_DIR = "/tmp/filinglens"
+```
+
+Streamlit Community Cloud 的文件系统是临时的。应用重启后，本地 SQLite
+中的对话和研究数据可能被清除；若需要永久保存，应接入 Supabase、Turso
+或 PostgreSQL 等托管数据库。
+
 ## 测试
 
 ```powershell
