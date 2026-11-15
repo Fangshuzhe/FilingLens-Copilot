@@ -47,8 +47,116 @@ DB_PATH = DATA_DIR / "filinglens.db"
 
 st.set_page_config(
     page_title="FilingLens Copilot",
-    page_icon="🔎",
+    page_icon="F",
     layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+st.markdown(
+    """
+    <style>
+    [data-testid="stHeader"] {
+        background: transparent;
+    }
+    [data-testid="stToolbar"], #MainMenu, footer {
+        visibility: hidden;
+    }
+    .block-container {
+        max-width: 900px;
+        padding-top: 2.8rem;
+        padding-bottom: 7rem;
+    }
+    [data-testid="stSidebar"] {
+        background: #F7F8FA;
+        border-right: 1px solid #ECEEF2;
+    }
+    [data-testid="stSidebar"] .block-container {
+        padding-top: 1.8rem;
+    }
+    .fl-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 1.4rem 0;
+        color: #111827;
+        font-size: 1.08rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+    .fl-logo {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 9px;
+        color: white;
+        background: #4D6BFE;
+        font-size: 0.9rem;
+        font-weight: 800;
+    }
+    .fl-label {
+        margin: 1.1rem 0 0.35rem 0;
+        color: #9CA3AF;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+    .fl-welcome {
+        display: flex;
+        min-height: 52vh;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+    .fl-welcome-mark {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 52px;
+        height: 52px;
+        margin-bottom: 22px;
+        border-radius: 16px;
+        color: white;
+        background: #4D6BFE;
+        font-size: 1.35rem;
+        font-weight: 800;
+        box-shadow: 0 8px 24px rgba(77, 107, 254, 0.18);
+    }
+    .fl-welcome h1 {
+        margin: 0;
+        color: #111827;
+        font-size: 1.65rem;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+    }
+    .fl-welcome p {
+        max-width: 560px;
+        margin: 12px 0 0 0;
+        color: #8A93A3;
+        font-size: 0.92rem;
+        line-height: 1.7;
+    }
+    [data-testid="stChatMessage"] {
+        background: transparent;
+        padding: 0.35rem 0;
+    }
+    [data-testid="stChatMessageContent"] {
+        font-size: 0.96rem;
+        line-height: 1.8;
+    }
+    [data-testid="stChatInput"] {
+        max-width: 840px;
+        margin: 0 auto;
+    }
+    .stButton button {
+        border-radius: 10px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 
@@ -231,34 +339,28 @@ def render_general_chat(service: FilingLensService) -> None:
     state_key = "general-chat-messages"
     messages = st.session_state.setdefault(state_key, [])
 
-    title_column, action_column = st.columns([5, 1])
-    with title_column:
-        st.subheader("通用对话")
-        st.caption("可直接讨论商业、财务和公司研究问题，不依赖年报上传。")
-    with action_column:
-        if st.button("清空对话", key="general-chat-clear"):
-            st.session_state[state_key] = []
-            st.rerun()
+    if not messages:
+        st.markdown(
+            """
+            <div class="fl-welcome">
+              <div class="fl-welcome-mark">F</div>
+              <h1>有什么可以帮你研究？</h1>
+              <p>直接讨论商业模式、财务指标、行业研究或数据分析。上传年报后，也可以切换到证据问答和研究工具。</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     for message in messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    with st.form("general-chat-form", clear_on_submit=True):
-        question = st.text_area(
-            "输入问题",
-            placeholder="例如：如何判断一家公司的商业模式是否健康？",
-            height=100,
-        )
-        submitted = st.form_submit_button("发送", type="primary")
-
-    if submitted:
-        if not question.strip():
-            st.warning("请输入问题。")
-            return
-
+    question = st.chat_input("给 FilingLens 发送消息")
+    if question:
         prior_messages = list(messages)
         messages.append({"role": "user", "content": question.strip()})
+        with st.chat_message("user"):
+            st.markdown(question)
         with st.spinner("正在思考..."):
             try:
                 response = service.general_chat(
@@ -270,11 +372,9 @@ def render_general_chat(service: FilingLensService) -> None:
                 st.error(str(exc))
                 return
         messages.append({"role": "assistant", "content": response})
+        with st.chat_message("assistant"):
+            st.markdown(response)
         st.session_state[state_key] = messages
-        st.rerun()
-
-    if not messages:
-        st.info("无需上传年报，直接输入问题即可开始。")
 
 
 def render_brief(
@@ -607,134 +707,172 @@ def render_research_board(
     )
 
 
-def render_upload() -> None:
-    with st.sidebar.form("upload-report"):
-        st.markdown("### 添加年报")
-        company = st.text_input("公司名称")
-        year = st.number_input(
-            "年报年份",
-            min_value=1990,
-            max_value=2100,
-            value=2025,
-            step=1,
-        )
-        uploaded_file = st.file_uploader("选择 PDF", type=["pdf"])
-        submitted = st.form_submit_button("解析并入库")
-
-    if not submitted:
-        return
-    if not uploaded_file or not company.strip():
-        st.sidebar.warning("请填写公司名称并选择 PDF。")
-        return
-
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    safe_name = Path(uploaded_file.name).name
-    stored_path = UPLOAD_DIR / f"{uuid4().hex}-{safe_name}"
-    stored_path.write_bytes(uploaded_file.getbuffer())
-
-    try:
-        with st.spinner("正在解析年报并建立检索索引..."):
-            pages = parse_pdf(stored_path)
-            chunks = chunk_pages(pages)
-            report_id = get_database().add_report(
-                company=company,
-                year=int(year),
-                filename=safe_name,
-                file_path=stored_path,
-                pages=pages,
-                chunks=chunks,
+def render_upload(*, expanded: bool) -> None:
+    with st.sidebar.expander("添加企业年报", expanded=expanded):
+        with st.form("upload-report"):
+            company = st.text_input("公司名称")
+            year = st.number_input(
+                "年报年份",
+                min_value=1990,
+                max_value=2100,
+                value=2025,
+                step=1,
             )
-    except (PdfExtractionError, OSError, ValueError) as exc:
-        stored_path.unlink(missing_ok=True)
-        st.sidebar.error(str(exc))
-        return
+            uploaded_file = st.file_uploader("选择 PDF", type=["pdf"])
+            submitted = st.form_submit_button("解析并入库")
 
-    quality = extraction_quality(pages)
-    st.sidebar.success(
-        f"解析完成：{quality['page_count']} 页，"
-        f"{len(chunks)} 个检索片段。"
+        if not submitted:
+            return
+        if not uploaded_file or not company.strip():
+            st.warning("请填写公司名称并选择 PDF。")
+            return
+
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        safe_name = Path(uploaded_file.name).name
+        stored_path = UPLOAD_DIR / f"{uuid4().hex}-{safe_name}"
+        stored_path.write_bytes(uploaded_file.getbuffer())
+
+        try:
+            with st.spinner("正在解析年报并建立检索索引..."):
+                pages = parse_pdf(stored_path)
+                chunks = chunk_pages(pages)
+                report_id = get_database().add_report(
+                    company=company,
+                    year=int(year),
+                    filename=safe_name,
+                    file_path=stored_path,
+                    pages=pages,
+                    chunks=chunks,
+                )
+        except (PdfExtractionError, OSError, ValueError) as exc:
+            stored_path.unlink(missing_ok=True)
+            st.error(str(exc))
+            return
+
+        quality = extraction_quality(pages)
+        st.success(
+            f"解析完成：{quality['page_count']} 页，"
+            f"{len(chunks)} 个检索片段。"
+        )
+        st.session_state["selected_report_id"] = report_id
+
+
+def render_sidebar_brand() -> None:
+    st.sidebar.markdown(
+        """
+        <div class="fl-brand">
+          <span class="fl-logo">F</span>
+          <span>FilingLens</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-    st.session_state["selected_report_id"] = report_id
+    if st.sidebar.button("新建对话", use_container_width=True):
+        st.session_state["general-chat-messages"] = []
+        st.session_state["main-view"] = "通用对话"
+        st.rerun()
+
+
+def render_sidebar_navigation(
+    *,
+    reports: list[Report],
+) -> tuple[Report, str]:
+    reports_by_id = {item.id: item for item in reports}
+    report_labels = {
+        item.id: f"{item.company} · {item.year}"
+        for item in reports
+    }
+    report_ids = list(report_labels)
+
+    st.sidebar.markdown(
+        '<div class="fl-label">当前文档</div>',
+        unsafe_allow_html=True,
+    )
+    selected_id = st.sidebar.selectbox(
+        "当前文档",
+        options=report_ids,
+        format_func=lambda item_id: report_labels[item_id],
+        index=_selected_report_index(report_ids),
+        label_visibility="collapsed",
+    )
+    st.session_state["selected_report_id"] = selected_id
+
+    st.sidebar.markdown(
+        '<div class="fl-label">研究工具</div>',
+        unsafe_allow_html=True,
+    )
+    view = st.sidebar.radio(
+        "研究工具",
+        options=[
+            "通用对话",
+            "研究底稿",
+            "证据问答",
+            "财务事实",
+            "年报变化",
+            "公司对比",
+            "研究板",
+        ],
+        key="main-view",
+        label_visibility="collapsed",
+    )
+    return reports_by_id[selected_id], view
 
 
 def main() -> None:
-    st.title("FilingLens Copilot")
-    st.caption("证据优先的企业年报研究工作台")
-
     database = get_database()
-    render_upload()
+    existing_reports = database.list_reports()
 
+    render_sidebar_brand()
+    render_upload(expanded=not existing_reports)
     reports = database.list_reports()
+
     try:
         service = get_service()
     except LLMConfigurationError as exc:
-        st.warning(f"{exc}。上传和解析仍可使用。")
+        st.error(f"{exc}。请先配置模型。")
         service = None
     except Exception as exc:
         st.error(f"模型初始化失败：{exc}")
         service = None
 
     if not reports:
-        st.info("不上传年报也可以直接对话；上传后可启用证据问答和研究报告功能。")
+        st.sidebar.caption("上传年报后可解锁证据问答和研究工具。")
         if service is None:
-            st.warning("通用对话需要先配置大模型。")
+            st.error("通用对话需要先配置大模型。")
         else:
             render_general_chat(service)
         return
 
+    report, view = render_sidebar_navigation(reports=reports)
     reports_by_id = {item.id: item for item in reports}
-    report_labels = {
-        item.id: f"{item.company} · {item.year} · {item.filename}"
-        for item in reports
-    }
-    report_ids = list(report_labels)
-    selected_id = st.sidebar.selectbox(
-        "当前年报",
-        options=report_ids,
-        format_func=lambda item_id: report_labels[item_id],
-        index=_selected_report_index(report_ids),
+    st.sidebar.caption(
+        f"{report.filename} · {report.page_count} 页"
     )
-    st.session_state["selected_report_id"] = selected_id
-    report = reports_by_id[selected_id]
 
-    chunks = database.list_chunks(report.id)
-    columns = st.columns(4)
-    columns[0].metric("公司", report.company)
-    columns[1].metric("年份", report.year)
-    columns[2].metric("页数", report.page_count)
-    columns[3].metric("检索片段", len(chunks))
-
-    tabs = st.tabs(
-        [
-            "通用对话",
-            "公司研究底稿",
-            "证据问答",
-            "财务事实",
-            "年报变化",
-            "公司对比",
-            "研究板",
-        ]
-    )
-    with tabs[0]:
+    if view == "通用对话":
         if service is None:
-            st.info("配置模型后可直接进行通用对话。")
+            st.error("通用对话需要先配置模型。")
         else:
             render_general_chat(service)
-    with tabs[1]:
+    elif view == "研究底稿":
+        st.subheader("研究底稿")
         if service is None:
-            st.info("配置模型后可生成结构化研究底稿。")
+            st.info("配置模型后可生成结构化底稿。")
         else:
             render_brief(service, report, reports_by_id)
-    with tabs[2]:
+    elif view == "证据问答":
+        st.subheader("证据问答")
         if service is None:
             st.info("配置模型后可进行带证据引用的问答。")
         else:
             render_research_chat(service, report, reports_by_id)
-    with tabs[3]:
+    elif view == "财务事实":
+        st.subheader("财务事实")
         render_financial_facts(report, reports_by_id)
-    with tabs[4]:
+    elif view == "年报变化":
+        st.subheader("年报变化")
         if service is None:
-            st.info("配置模型后可分析连续年度年报变化。")
+            st.info("配置模型后可分析连续年度变化。")
         else:
             render_change_radar(
                 service,
@@ -742,9 +880,10 @@ def main() -> None:
                 reports,
                 reports_by_id,
             )
-    with tabs[5]:
+    elif view == "公司对比":
+        st.subheader("公司对比")
         if service is None:
-            st.info("配置模型后可生成双公司对比。")
+            st.info("配置模型后可生成公司对比。")
         else:
             render_company_comparison(
                 service,
@@ -752,12 +891,9 @@ def main() -> None:
                 reports,
                 reports_by_id,
             )
-    with tabs[6]:
+    elif view == "研究板":
+        st.subheader("研究板")
         render_research_board(report, reports_by_id)
-
-    with st.sidebar.expander("当前数据"):
-        st.write(f"{report.page_count} 页，{len(chunks)} 个检索片段")
-        st.caption("点击证据编号旁的“查看 PDF 原页”可定位并高亮原文。")
 
 
 def _financial_evidence(
