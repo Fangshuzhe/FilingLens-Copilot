@@ -66,3 +66,35 @@ def test_chat_messages_persist_by_conversation(tmp_path):
     assert messages[0].content == "你好"
     assert messages[1].content == "你好，我是 FilingLens。"
 
+
+def test_list_conversations_keeps_old_chats_and_latest_first(tmp_path):
+    database = Database(tmp_path / "chat.db")
+    first_id = "a" * 32
+    second_id = "b" * 32
+
+    database.add_chat_message(
+        conversation_id=first_id,
+        role="user",
+        content="第一段对话",
+    )
+    database.add_chat_message(
+        conversation_id=first_id,
+        role="assistant",
+        content="第一段回答",
+    )
+    database.add_chat_message(
+        conversation_id=second_id,
+        role="user",
+        content="第二段对话",
+    )
+
+    conversations = database.list_conversations()
+
+    assert [item.conversation_id for item in conversations] == [
+        second_id,
+        first_id,
+    ]
+    assert conversations[0].title == "第二段对话"
+    assert conversations[1].title == "第一段对话"
+    assert conversations[1].message_count == 2
+

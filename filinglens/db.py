@@ -9,6 +9,7 @@ from typing import Iterator, Sequence
 
 from filinglens.models import (
     ChatMessage,
+    ConversationSummary,
     Evidence,
     Insight,
     PageText,
@@ -285,6 +286,42 @@ class Database:
                 role=str(row["role"]),
                 content=str(row["content"]),
                 created_at=str(row["created_at"]),
+            )
+            for row in rows
+        ]
+
+    def list_conversations(self) -> list[ConversationSummary]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    messages.conversation_id,
+                    COALESCE(
+                        (
+                            SELECT first_user.content
+                            FROM chat_messages AS first_user
+                            WHERE first_user.conversation_id = messages.conversation_id
+                              AND first_user.role = 'user'
+                            ORDER BY first_user.id
+                            LIMIT 1
+                        ),
+                        '新对话'
+                    ) AS title,
+                    MAX(messages.id) AS last_message_id,
+                    COUNT(*) AS message_count,
+                    MAX(messages.created_at) AS updated_at
+                FROM chat_messages AS messages
+                GROUP BY messages.conversation_id
+                ORDER BY last_message_id DESC
+                """
+            ).fetchall()
+        return [
+            ConversationSummary(
+                conversation_id=str(row["conversation_id"]),
+                title=str(row["title"]),
+                last_message_id=int(row["last_message_id"]),
+                message_count=int(row["message_count"]),
+                updated_at=str(row["updated_at"]),
             )
             for row in rows
         ]

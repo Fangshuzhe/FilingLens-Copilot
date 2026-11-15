@@ -65,6 +65,18 @@ st.markdown(
     [data-testid="stToolbar"], #MainMenu, footer {
         visibility: hidden;
     }
+    [data-testid="stExpandSidebarButton"] {
+        display: block !important;
+        visibility: visible !important;
+        position: fixed !important;
+        top: 12px !important;
+        left: 12px !important;
+        z-index: 1000000 !important;
+        background: #FFFFFF !important;
+        border: 1px solid #E5E7EB !important;
+        border-radius: 10px !important;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08) !important;
+    }
     .block-container {
         max-width: 900px;
         padding-top: 2.8rem;
@@ -831,6 +843,33 @@ def render_sidebar_brand() -> None:
         st.rerun()
 
 
+def render_conversation_history(current_conversation_id: str) -> None:
+    conversations = get_database().list_conversations()
+    if not conversations:
+        return
+
+    st.sidebar.markdown(
+        '<div class="fl-label">历史对话</div>',
+        unsafe_allow_html=True,
+    )
+    for conversation in conversations[:20]:
+        title = " ".join(conversation.title.split())
+        if len(title) > 24:
+            title = f"{title[:24]}…"
+        if conversation.conversation_id == current_conversation_id:
+            label = f"当前 · {title}"
+        else:
+            label = title
+        if st.sidebar.button(
+            label,
+            key=f"conversation-{conversation.conversation_id}",
+            use_container_width=True,
+        ):
+            st.query_params["chat"] = conversation.conversation_id
+            st.session_state["main-view"] = "通用对话"
+            st.rerun()
+
+
 def render_sidebar_navigation(
     *,
     reports: list[Report],
@@ -881,6 +920,8 @@ def main() -> None:
     existing_reports = database.list_reports()
 
     render_sidebar_brand()
+    conversation_id = get_current_conversation_id()
+    render_conversation_history(conversation_id)
     render_upload(expanded=not existing_reports)
     reports = database.list_reports()
 
@@ -892,8 +933,6 @@ def main() -> None:
     except Exception as exc:
         st.error(f"模型初始化失败：{exc}")
         service = None
-
-    conversation_id = get_current_conversation_id()
 
     if not reports:
         st.sidebar.caption("上传年报后可解锁证据问答和研究工具。")

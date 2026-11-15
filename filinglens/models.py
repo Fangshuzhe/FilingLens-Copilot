@@ -118,3 +118,12 @@ class ChatMessage:
     content: str
     created_at: str
 
+
+@dataclass(frozen=True)
+class ConversationSummary:
+    conversation_id: str
+    title: str
+    last_message_id: int
+    message_count: int
+    updated_at: str
+
