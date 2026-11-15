@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import html
 import os
 import re
 from pathlib import Path
@@ -143,6 +144,35 @@ st.markdown(
     }
     .stButton button {
         border-radius: 10px;
+    }
+    .fl-user-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-end;
+        gap: 12px;
+        width: 100%;
+        margin: 10px 0 18px 0;
+    }
+    .fl-user-text {
+        max-width: 72%;
+        color: #1F2937;
+        font-size: 0.96rem;
+        line-height: 1.8;
+        overflow-wrap: anywhere;
+    }
+    .fl-user-avatar {
+        display: flex;
+        flex: 0 0 38px;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 11px;
+        background: #FF5A5F;
+    }
+    .fl-user-avatar svg {
+        width: 24px;
+        height: 24px;
     }
     </style>
     """,
@@ -387,9 +417,21 @@ def _render_chat_message(role: str, content: str) -> None:
         with st.chat_message(role, avatar=str(LOGO_MARK_PATH)):
             st.markdown(content)
     else:
-        with st.container(horizontal_alignment="right"):
-            with st.chat_message(role, width="content"):
-                st.markdown(content)
+        safe_content = html.escape(content).replace("\n", "<br>")
+        st.markdown(
+            f"""
+            <div class="fl-user-row">
+              <div class="fl-user-text">{safe_content}</div>
+              <div class="fl-user-avatar" aria-label="用户头像">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+                  <path d="M4.8 20c.8-4 3.5-6 7.2-6s6.4 2 7.2 6" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def render_brief(
