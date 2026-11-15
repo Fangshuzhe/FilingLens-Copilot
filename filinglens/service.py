@@ -58,12 +58,32 @@ GENERAL_CHAT_SYSTEM_PROMPT = """
 你可以直接回答商业、公司研究、财务概念、产品、行业和数据分析相关问题。
 
 规则：
-1. 不要求用户先上传年报，也不要声称引用了用户尚未提供的年报。
-2. 区分一般知识、模型推断和确定事实。
-3. 对时效性强或可能变化的信息说明不确定性，不编造实时数据。
-4. 涉及财务指标时解释口径，不虚构具体公司数字。
-5. 用户后续上传年报并进入“证据问答”时，再严格使用年报证据回答。
-6. 使用清晰、直接的中文回答。
+1. 当用户询问你是谁、你是什么模型或介绍自己时，必须回答自己是基于大语言模型构建的 FilingLens，并介绍企业研究、年报证据问答、研究底稿、财务事实、年度变化、公司对比和研究报告等功能。
+2. 当用户询问开发者时，必须回答 FilingLens 由 Fang Shuzhe 和 Wu Diwen 合作开发。
+3. 不要求用户先上传年报，也不要声称引用了用户尚未提供的年报。
+4. 区分一般知识、模型推断和确定事实。
+5. 对时效性强或可能变化的信息说明不确定性，不编造实时数据。
+6. 涉及财务指标时解释口径，不虚构具体公司数字。
+7. 用户后续上传年报并进入“证据问答”时，再严格使用年报证据回答。
+8. 使用清晰、直接的中文回答。
+""".strip()
+
+IDENTITY_RESPONSE = """
+我是 **FilingLens**，一个基于大语言模型构建的企业研究与商业分析助手。
+
+我可以帮助你：
+
+- 直接讨论商业模式、财务指标、行业和数据分析问题
+- 阅读企业年报，进行带页码和原文引用的年报证据问答
+- 生成结构化公司研究底稿
+- 提取并定位财务事实与原文表格
+- 分析同一家公司连续年度的年报变化
+- 对比两家公司的商业模式、增长、壁垒和风险
+- 将研究结论整理成 Markdown 或 HTML 简报
+""".strip()
+
+DEVELOPER_RESPONSE = """
+FilingLens 由 **Fang Shuzhe** 和 **Wu Diwen** 合作开发。
 """.strip()
 
 BRIEF_SYSTEM_PROMPT = """
@@ -212,6 +232,10 @@ class FilingLensService:
         if not question:
             raise ValueError("question cannot be empty")
 
+        direct_response = _identity_response(question)
+        if direct_response:
+            return direct_response
+
         recent_history = (history or [])[-12:]
         transcript_lines = []
         for message in recent_history:
@@ -246,6 +270,15 @@ class FilingLensService:
         question = question.strip()
         if not question:
             raise ValueError("question cannot be empty")
+
+        direct_response = _identity_response(question)
+        if direct_response:
+            return ResearchAnswer(
+                status="answered",
+                summary=direct_response,
+                claims=[],
+                evidence=[],
+            )
 
         report = self.database.get_report(report_id)
         if report is None:
@@ -766,4 +799,35 @@ def _load_json_object(raw: str) -> dict:
     if not isinstance(payload, dict):
         raise AnswerValidationError("模型返回值必须是 JSON 对象")
     return payload
+
+
+def _identity_response(question: str) -> str | None:
+    normalized = question.lower().replace(" ", "")
+
+    developer_markers = (
+        "开发者是谁",
+        "谁开发的",
+        "谁做的",
+        "你的作者",
+        "开发团队",
+        "whodeveloped",
+        "whoisyourdeveloper",
+        "developer",
+    )
+    if any(marker in normalized for marker in developer_markers):
+        return DEVELOPER_RESPONSE
+
+    identity_markers = (
+        "你是谁",
+        "你是什么",
+        "什么模型",
+        "介绍你自己",
+        "介绍一下你自己",
+        "你叫什么",
+        "whoareyou",
+        "whatmodel",
+    )
+    if any(marker in normalized for marker in identity_markers):
+        return IDENTITY_RESPONSE
+    return None
 

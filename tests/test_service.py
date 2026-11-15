@@ -99,6 +99,27 @@ def test_general_chat_works_without_report_context(tmp_path):
     assert "我在做公司研究" in llm.calls[0]["user"]
 
 
+def test_identity_question_returns_product_description_without_llm(tmp_path):
+    service, _, llm = build_service(tmp_path, [])
+
+    answer = service.general_chat(question="你是谁？")
+
+    assert "FilingLens" in answer
+    assert "基于大语言模型" in answer
+    assert "年报证据问答" in answer
+    assert not llm.calls
+
+
+def test_developer_question_returns_required_names_without_llm(tmp_path):
+    service, _, llm = build_service(tmp_path, [])
+
+    answer = service.general_chat(question="你的开发者是谁？")
+
+    assert "Fang Shuzhe" in answer
+    assert "Wu Diwen" in answer
+    assert not llm.calls
+
+
 def test_generate_structured_company_brief(tmp_path):
     service, report_id, _ = build_service(
         tmp_path,

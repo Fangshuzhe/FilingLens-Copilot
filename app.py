@@ -352,15 +352,13 @@ def render_general_chat(service: FilingLensService) -> None:
         )
 
     for message in messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+        _render_chat_message(message["role"], message["content"])
 
     question = st.chat_input("给 FilingLens 发送消息")
     if question:
         prior_messages = list(messages)
         messages.append({"role": "user", "content": question.strip()})
-        with st.chat_message("user"):
-            st.markdown(question)
+        _render_chat_message("user", question)
         with st.spinner("正在思考..."):
             try:
                 response = service.general_chat(
@@ -372,9 +370,19 @@ def render_general_chat(service: FilingLensService) -> None:
                 st.error(str(exc))
                 return
         messages.append({"role": "assistant", "content": response})
-        with st.chat_message("assistant"):
-            st.markdown(response)
+        _render_chat_message("assistant", response)
         st.session_state[state_key] = messages
+
+
+def _render_chat_message(role: str, content: str) -> None:
+    if role == "user":
+        _, message_column = st.columns([0.72, 2.28], vertical_alignment="top")
+    else:
+        message_column, _ = st.columns([2.28, 0.72], vertical_alignment="top")
+
+    with message_column:
+        with st.chat_message(role):
+            st.markdown(content)
 
 
 def render_brief(
