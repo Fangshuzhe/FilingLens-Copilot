@@ -11,8 +11,8 @@ from filinglens.parser import (
 
 def test_chunk_pages_preserves_page_number():
     pages = [
-        PageText(page_number=1, text="第一页介绍公司业务。" * 30),
-        PageText(page_number=2, text="第二页介绍主要风险。" * 30),
+        PageText(page_number=1, text="The first page describes the business. " * 30),
+        PageText(page_number=2, text="The second page describes key risks. " * 30),
     ]
 
     chunks = chunk_pages(pages, target_chars=300, overlap_chars=40)
@@ -25,7 +25,7 @@ def test_chunk_pages_preserves_page_number():
 def test_extraction_quality_counts_empty_pages():
     quality = extraction_quality(
         [
-            PageText(page_number=1, text="这是一段足够长的有效文本内容。" * 3),
+            PageText(page_number=1, text="This is sufficiently long extracted text. " * 3),
             PageText(page_number=2, text=""),
         ]
     )

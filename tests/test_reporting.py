@@ -16,7 +16,7 @@ from filinglens.reporting import (
 def test_insights_export_includes_evidence():
     report = Report(
         id=1,
-        company="示例公司",
+        company="Example Corp",
         year=2025,
         filename="sample.pdf",
         file_path="sample.pdf",
@@ -26,14 +26,14 @@ def test_insights_export_includes_evidence():
     insight = Insight(
         id=1,
         report_id=1,
-        text="海外市场是主要增长来源。",
+        text="Overseas markets are the primary growth driver.",
         evidence=[
             Evidence(
                 evidence_id="E1",
                 chunk_id=1,
                 report_id=1,
                 page_number=3,
-                text="公司收入增长主要来自海外市场扩张。",
+                text="Revenue growth was driven mainly by overseas expansion.",
                 score=1.0,
             )
         ],
@@ -43,15 +43,15 @@ def test_insights_export_includes_evidence():
 
     markdown = insights_to_markdown(report, [insight])
 
-    assert "# 示例公司（2025）研究简报" in markdown
-    assert "第 3 页" in markdown
-    assert "海外市场扩张" in markdown
+    assert "# Example Corp (2025) Research Brief" in markdown
+    assert "Page 3" in markdown
+    assert "overseas expansion" in markdown
 
 
 def test_company_report_export_includes_sections_and_html():
     report = Report(
         id=1,
-        company="示例公司",
+        company="Example Corp",
         year=2025,
         filename="sample.pdf",
         file_path="sample.pdf",
@@ -60,15 +60,15 @@ def test_company_report_export_includes_sections_and_html():
     )
     answer = ResearchAnswer(
         status="answered",
-        summary="公司通过软件订阅获得收入。",
+        summary="The company earns revenue from software subscriptions.",
         claims=[],
         evidence=[],
         sections=[
             AnswerSection(
-                title="商业模式",
+                title="Business model",
                 claims=[
                     Claim(
-                        text="收入主要来自软件订阅。",
+                        text="Revenue comes primarily from software subscriptions.",
                         evidence_ids=["E1"],
                     )
                 ],
@@ -77,10 +77,10 @@ def test_company_report_export_includes_sections_and_html():
     )
 
     markdown = company_report_to_markdown(report, answer=answer)
-    html = markdown_to_html(markdown, title="示例公司研究简报")
+    html = markdown_to_html(markdown, title="Example Corp Research Brief")
 
-    assert "## 商业模式" in markdown
-    assert "收入主要来自软件订阅" in markdown
+    assert "## Business model" in markdown
+    assert "Revenue comes primarily from software subscriptions" in markdown
     assert "<html" in html
-    assert "示例公司研究简报" in html
+    assert "Example Corp Research Brief" in html
 

@@ -44,7 +44,7 @@ class LLMSettings:
         ]
         if missing:
             raise LLMConfigurationError(
-                f"缺少模型配置：{', '.join(missing)}"
+                f"Missing model configuration: {', '.join(missing)}"
             )
 
 
@@ -65,19 +65,21 @@ class OpenAICompatibleLLM:
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:500]
             raise LLMResponseError(
-                f"模型请求失败（HTTP {exc.code}）：{detail}"
+                f"Model request failed (HTTP {exc.code}): {detail}"
             ) from exc
         except urllib.error.URLError as exc:
-            raise LLMResponseError(f"模型连接失败：{exc.reason}") from exc
+            raise LLMResponseError(f"Could not connect to the model: {exc.reason}") from exc
 
         try:
             data = json.loads(body)
             content = data["choices"][0]["message"]["content"]
         except (json.JSONDecodeError, KeyError, IndexError, TypeError) as exc:
-            raise LLMResponseError("模型返回格式不符合 OpenAI Chat Completions 规范。") from exc
+            raise LLMResponseError(
+                "The model response does not follow the OpenAI Chat Completions format."
+            ) from exc
 
         if not isinstance(content, str) or not content.strip():
-            raise LLMResponseError("模型返回了空内容。")
+            raise LLMResponseError("The model returned an empty response.")
         return content.strip()
 
     def stream(self, *, system: str, user: str) -> Iterator[str]:
@@ -109,13 +111,13 @@ class OpenAICompatibleLLM:
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:500]
             raise LLMResponseError(
-                f"模型请求失败（HTTP {exc.code}）：{detail}"
+                f"Model request failed (HTTP {exc.code}): {detail}"
             ) from exc
         except urllib.error.URLError as exc:
-            raise LLMResponseError(f"模型连接失败：{exc.reason}") from exc
+            raise LLMResponseError(f"Could not connect to the model: {exc.reason}") from exc
 
         if not emitted:
-            raise LLMResponseError("模型没有返回流式内容。")
+            raise LLMResponseError("The model returned no streaming content.")
 
     def _build_request(self, *, system: str, user: str, stream: bool):
         endpoint = self.settings.base_url.rstrip("/")

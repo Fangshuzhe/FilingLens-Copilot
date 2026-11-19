@@ -14,14 +14,14 @@ from filinglens.models import (
 
 def insights_to_markdown(report: Report, insights: list[Insight]) -> str:
     lines = [
-        f"# {report.company}（{report.year}）研究简报",
+        f"# {report.company} ({report.year}) Research Brief",
         "",
-        f"- 年报文件：{report.filename}",
-        f"- 页数：{report.page_count}",
+        f"- Annual report: {report.filename}",
+        f"- Pages: {report.page_count}",
         "",
     ]
     if not insights:
-        lines.append("尚未收藏研究结论。")
+        lines.append("No research conclusions have been saved yet.")
         return "\n".join(lines).strip() + "\n"
 
     for index, insight in enumerate(insights, start=1):
@@ -29,14 +29,14 @@ def insights_to_markdown(report: Report, insights: list[Insight]) -> str:
             [
                 f"## {index}. {insight.text}",
                 "",
-                f"- 类型：{_kind_label(insight.kind)}",
+                f"- Type: {_kind_label(insight.kind)}",
                 "",
             ]
         )
         for evidence in insight.evidence:
             lines.extend(
                 [
-                    f"**证据 {evidence.evidence_id}｜第 {evidence.page_number} 页**",
+                    f"**Evidence {evidence.evidence_id} | Page {evidence.page_number}**",
                     "",
                     f"> {evidence.text.replace(chr(10), ' ')}",
                     "",
@@ -52,16 +52,16 @@ def company_report_to_markdown(
     insights: list[Insight] | None = None,
 ) -> str:
     lines = [
-        f"# {report.company}（{report.year}）公司研究简报",
+        f"# {report.company} ({report.year}) Company Research Brief",
         "",
-        f"- 年报文件：{report.filename}",
-        f"- 页数：{report.page_count}",
+        f"- Annual report: {report.filename}",
+        f"- Pages: {report.page_count}",
         "",
     ]
     if answer and answer.is_answered:
         lines.extend(
             [
-                "## 核心结论",
+                "## Key Conclusions",
                 "",
                 answer.summary,
                 "",
@@ -75,17 +75,17 @@ def company_report_to_markdown(
             lines.extend(_claim_markdown(answer.claims))
 
     if insights:
-        lines.extend(["## 研究板结论", ""])
+        lines.extend(["## Saved Research Conclusions", ""])
         for insight in insights:
             citations = " ".join(
-                f"[{item.evidence_id}·第{item.page_number}页]"
+                f"[{item.evidence_id}, p. {item.page_number}]"
                 for item in insight.evidence
             )
             lines.append(f"- {insight.text} {citations}")
         lines.append("")
 
     if not answer and not insights:
-        lines.append("尚未生成研究底稿或收藏研究结论。")
+        lines.append("No research brief or saved conclusion is available.")
 
     return "\n".join(lines).strip() + "\n"
 
@@ -96,12 +96,12 @@ def change_report_to_markdown(
     report: ChangeReport,
 ) -> str:
     lines = [
-        f"# {current.company} 年报变化雷达",
+        f"# {current.company} Annual Report Change Radar",
         "",
-        f"- 较新年报：{current.year}",
-        f"- 较早年报：{previous.year}",
+        f"- Current report: {current.year}",
+        f"- Previous report: {previous.year}",
         "",
-        "## 核心结论",
+        "## Key Findings",
         "",
         report.summary,
         "",
@@ -110,24 +110,24 @@ def change_report_to_markdown(
         citations = " ".join(f"[{value}]" for value in item.evidence_ids)
         lines.extend(
             [
-                f"## {item.dimension}｜{item.change_type}",
+                f"## {item.dimension} | {item.change_type}",
                 "",
-                f"- 上一年度：{item.previous}",
-                f"- 本年度：{item.current}",
-                f"- 证据：{citations}",
+                f"- Previous report: {item.previous}",
+                f"- Current report: {item.current}",
+                f"- Evidence: {citations}",
                 "",
             ]
         )
     if report.evidence:
-        lines.extend(["## 证据索引", ""])
+        lines.extend(["## Evidence Index", ""])
         for evidence in report.evidence:
             lines.append(
                 f"- [{evidence.evidence_id}] {evidence.company} "
-                f"{evidence.year} 年第 {evidence.page_number} 页"
+                f"{evidence.year}, page {evidence.page_number}"
             )
         lines.append("")
     if not report.changes:
-        lines.append("没有识别出可验证的年度变化。")
+        lines.append("No verifiable year-over-year changes were identified.")
     return "\n".join(lines).strip() + "\n"
 
 
@@ -137,12 +137,12 @@ def company_comparison_to_markdown(
     answer: ResearchAnswer,
 ) -> str:
     lines = [
-        f"# {report_a.company} vs {report_b.company} 公司对比",
+        f"# {report_a.company} vs {report_b.company}: Company Comparison",
         "",
-        f"- A 公司：{report_a.company}（{report_a.year}）",
-        f"- B 公司：{report_b.company}（{report_b.year}）",
+        f"- Company A: {report_a.company} ({report_a.year})",
+        f"- Company B: {report_b.company} ({report_b.year})",
         "",
-        "## 核心结论",
+        "## Key Conclusions",
         "",
         answer.summary,
         "",
@@ -161,7 +161,7 @@ def markdown_to_html(markdown_text: str, *, title: str) -> str:
         extensions=["tables", "sane_lists"],
     )
     return f"""<!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -209,7 +209,7 @@ def _claim_markdown(claims) -> list[str]:
 
 def _kind_label(kind: str) -> str:
     return {
-        "annual_report_fact": "年报事实",
-        "model_judgment": "模型判断",
+        "annual_report_fact": "Annual report fact",
+        "model_judgment": "Model judgment",
     }.get(kind, kind)
 

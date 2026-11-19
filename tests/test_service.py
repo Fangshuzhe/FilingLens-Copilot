@@ -23,16 +23,21 @@ class SequenceLLM:
 def build_service(tmp_path, responses):
     database = Database(tmp_path / "test.db")
     report_id = database.add_report(
-        company="示例公司",
+        company="Example Corp",
         year=2025,
         filename="sample.pdf",
         file_path=tmp_path / "sample.pdf",
-        pages=[PageText(page_number=3, text="公司收入增长主要来自海外市场扩张。")],
+        pages=[
+            PageText(
+                page_number=3,
+                text="Revenue growth was driven mainly by overseas expansion.",
+            )
+        ],
         chunks=[
             TextChunk(
                 chunk_index=0,
                 page_number=3,
-                text="公司收入增长主要来自海外市场扩张。",
+                text="Revenue growth was driven mainly by overseas expansion.",
             )
         ],
     )
@@ -47,9 +52,9 @@ def test_answer_requires_valid_evidence_ids(tmp_path):
             """
             {
               "status": "answered",
-              "summary": "海外扩张推动增长。",
+              "summary": "Overseas expansion drove growth.",
               "claims": [
-                {"text": "收入增长来自海外市场。", "evidence_ids": ["E9"], "kind": "annual_report_fact"}
+                {"text": "Revenue growth came from overseas markets.", "evidence_ids": ["E9"], "kind": "annual_report_fact"}
               ],
               "missing": []
             }
@@ -57,9 +62,9 @@ def test_answer_requires_valid_evidence_ids(tmp_path):
             """
             {
               "status": "answered",
-              "summary": "海外扩张推动增长。",
+              "summary": "Overseas expansion drove growth.",
               "claims": [
-                {"text": "收入增长来自海外市场。", "evidence_ids": ["E1"], "kind": "annual_report_fact"}
+                {"text": "Revenue growth came from overseas markets.", "evidence_ids": ["E1"], "kind": "annual_report_fact"}
               ],
               "missing": []
             }
@@ -67,21 +72,24 @@ def test_answer_requires_valid_evidence_ids(tmp_path):
         ],
     )
 
-    answer = service.ask(report_id=report_id, question="收入增长来自哪里？")
+    answer = service.ask(
+        report_id=report_id,
+        question="What drove revenue growth?",
+    )
 
     assert answer.is_answered
     assert answer.claims[0].evidence_ids == ["E1"]
     assert len(llm.calls) == 2
-    assert "上一次输出未通过校验" in llm.calls[1]["user"]
+    assert "previous output failed validation" in llm.calls[1]["user"]
 
 
 def test_insufficient_evidence_skips_llm(tmp_path):
-    service, report_id, llm = build_service(
-        tmp_path,
-        [],
-    )
+    service, report_id, llm = build_service(tmp_path, [])
 
-    answer = service.ask(report_id=report_id, question="董事长电话号码是多少？")
+    answer = service.ask(
+        report_id=report_id,
+        question="What is the CEO's phone number?",
+    )
 
     assert answer.status == "insufficient_evidence"
     assert not llm.calls
@@ -90,37 +98,37 @@ def test_insufficient_evidence_skips_llm(tmp_path):
 def test_general_chat_works_without_report_context(tmp_path):
     service, _, llm = build_service(
         tmp_path,
-        ["毛利率等于毛利除以营业收入。"],
+        ["Gross margin equals gross profit divided by revenue."],
     )
 
     answer = service.general_chat(
-        question="毛利率怎么计算？",
+        question="How do I calculate gross margin?",
         history=[
-            {"role": "user", "content": "我在做公司研究。"},
-            {"role": "assistant", "content": "可以从商业模式开始。"},
+            {"role": "user", "content": "I am researching a company."},
+            {"role": "assistant", "content": "Start with the business model."},
         ],
     )
 
-    assert answer == "毛利率等于毛利除以营业收入。"
-    assert "用户当前问题：毛利率怎么计算？" in llm.calls[0]["user"]
-    assert "我在做公司研究" in llm.calls[0]["user"]
+    assert answer == "Gross margin equals gross profit divided by revenue."
+    assert "Current user question: How do I calculate gross margin?" in llm.calls[0]["user"]
+    assert "I am researching a company" in llm.calls[0]["user"]
 
 
 def test_identity_question_returns_product_description_without_llm(tmp_path):
     service, _, llm = build_service(tmp_path, [])
 
-    answer = service.general_chat(question="你是谁？")
+    answer = service.general_chat(question="Who are you?")
 
     assert "FilingLens" in answer
-    assert "基于大语言模型" in answer
-    assert "年报证据问答" in answer
+    assert "built on a large language model" in answer
+    assert "page-level citations" in answer
     assert not llm.calls
 
 
 def test_developer_question_returns_required_names_without_llm(tmp_path):
     service, _, llm = build_service(tmp_path, [])
 
-    answer = service.general_chat(question="你的开发者是谁？")
+    answer = service.general_chat(question="Who developed FilingLens?")
 
     assert "Fang Shuzhe" in answer
     assert "Wu Diwen" in answer
@@ -130,17 +138,17 @@ def test_developer_question_returns_required_names_without_llm(tmp_path):
 def test_general_chat_stream_yields_model_chunks(tmp_path):
     service, _, llm = build_service(
         tmp_path,
-        ["第一段第二段"],
+        ["First section. Second section."],
     )
 
     chunks = list(
         service.general_chat_stream(
-            question="解释商业模式",
+            question="Explain business models.",
             history=[],
         )
     )
 
-    assert "".join(chunks) == "第一段第二段"
+    assert "".join(chunks) == "First section. Second section."
     assert len(chunks) == 2
     assert llm.calls[0]["system"]
 
@@ -152,13 +160,13 @@ def test_generate_structured_company_brief(tmp_path):
             """
             {
               "status": "answered",
-              "summary": "公司通过海外市场软件服务增长。",
+              "summary": "The company grows through overseas software services.",
               "sections": [
                 {
-                  "title": "业务定位",
+                  "title": "Business overview",
                   "claims": [
                     {
-                      "text": "公司收入增长主要来自海外市场扩张。",
+                      "text": "Revenue growth was driven mainly by overseas expansion.",
                       "evidence_ids": ["E1"],
                       "kind": "annual_report_fact"
                     }
@@ -174,40 +182,62 @@ def test_generate_structured_company_brief(tmp_path):
     answer = service.generate_company_brief(report_id=report_id)
 
     assert answer.is_answered
-    assert answer.sections[0].title == "业务定位"
-    assert answer.claims[0].text == "公司收入增长主要来自海外市场扩张。"
+    assert answer.sections[0].title == "Business overview"
+    assert answer.claims[0].text == "Revenue growth was driven mainly by overseas expansion."
 
 
 def test_compare_annual_reports_uses_current_and_previous_evidence(tmp_path):
     database = Database(tmp_path / "test.db")
     previous_id = database.add_report(
-        company="示例公司",
+        company="Example Corp",
         year=2024,
         filename="2024.pdf",
         file_path=tmp_path / "2024.pdf",
-        pages=[PageText(page_number=2, text="公司主营业务为软件服务。")],
-        chunks=[TextChunk(0, 2, "公司主营业务为软件服务。")],
+        pages=[
+            PageText(
+                page_number=2,
+                text="The company's business model provides software services.",
+            )
+        ],
+        chunks=[
+            TextChunk(
+                0,
+                2,
+                "The company's business model provides software services.",
+            )
+        ],
     )
     current_id = database.add_report(
-        company="示例公司",
+        company="Example Corp",
         year=2025,
         filename="2025.pdf",
         file_path=tmp_path / "2025.pdf",
-        pages=[PageText(page_number=5, text="公司新增海外软件订阅业务。")],
-        chunks=[TextChunk(0, 5, "公司新增海外软件订阅业务。")],
+        pages=[
+            PageText(
+                page_number=5,
+                text="The company's business model added overseas software subscriptions.",
+            )
+        ],
+        chunks=[
+            TextChunk(
+                0,
+                5,
+                "The company's business model added overseas software subscriptions.",
+            )
+        ],
     )
     llm = SequenceLLM(
         [
             """
             {
               "status": "answered",
-              "summary": "业务范围扩展到海外。",
+              "summary": "The business expanded internationally.",
               "changes": [
                 {
-                  "dimension": "业务与收入",
-                  "previous": "主营业务为软件服务。",
-                  "current": "新增海外软件订阅业务。",
-                  "change_type": "新增",
+                  "dimension": "Business and revenue",
+                  "previous": "The company provided software services.",
+                  "current": "The company added overseas software subscriptions.",
+                  "change_type": "added",
                   "evidence_ids": ["C1", "P1"]
                 }
               ],
@@ -224,40 +254,62 @@ def test_compare_annual_reports_uses_current_and_previous_evidence(tmp_path):
     )
 
     assert report.is_answered
-    assert report.changes[0].change_type == "新增"
+    assert report.changes[0].change_type == "added"
     assert set(report.changes[0].evidence_ids) == {"C1", "P1"}
 
 
 def test_compare_companies_requires_evidence_from_both(tmp_path):
     database = Database(tmp_path / "test.db")
     report_a_id = database.add_report(
-        company="A 公司",
+        company="Company A",
         year=2025,
         filename="a.pdf",
         file_path=tmp_path / "a.pdf",
-        pages=[PageText(page_number=1, text="A 公司主营企业软件。")],
-        chunks=[TextChunk(0, 1, "A 公司主营企业软件。")],
+        pages=[
+            PageText(
+                page_number=1,
+                text="Company A's business model provides enterprise software.",
+            )
+        ],
+        chunks=[
+            TextChunk(
+                0,
+                1,
+                "Company A's business model provides enterprise software.",
+            )
+        ],
     )
     report_b_id = database.add_report(
-        company="B 公司",
+        company="Company B",
         year=2025,
         filename="b.pdf",
         file_path=tmp_path / "b.pdf",
-        pages=[PageText(page_number=2, text="B 公司主营消费硬件。")],
-        chunks=[TextChunk(0, 2, "B 公司主营消费硬件。")],
+        pages=[
+            PageText(
+                page_number=2,
+                text="Company B's business model sells consumer hardware.",
+            )
+        ],
+        chunks=[
+            TextChunk(
+                0,
+                2,
+                "Company B's business model sells consumer hardware.",
+            )
+        ],
     )
     llm = SequenceLLM(
         [
             """
             {
               "status": "answered",
-              "summary": "两家公司分别服务企业软件和消费硬件市场。",
+              "summary": "The companies target different markets.",
               "sections": [
                 {
-                  "title": "商业模式",
+                  "title": "Business model",
                   "claims": [
-                    {"text": "A 公司主营企业软件。", "evidence_ids": ["A1"], "kind": "annual_report_fact"},
-                    {"text": "B 公司主营消费硬件。", "evidence_ids": ["B1"], "kind": "annual_report_fact"}
+                    {"text": "Company A provides enterprise software.", "evidence_ids": ["A1"], "kind": "annual_report_fact"},
+                    {"text": "Company B sells consumer hardware.", "evidence_ids": ["B1"], "kind": "annual_report_fact"}
                   ]
                 }
               ],
@@ -275,4 +327,3 @@ def test_compare_companies_requires_evidence_from_both(tmp_path):
 
     assert answer.is_answered
     assert {claim.evidence_ids[0] for claim in answer.claims} == {"A1", "B1"}
-

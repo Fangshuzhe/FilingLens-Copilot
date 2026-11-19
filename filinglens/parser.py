@@ -29,7 +29,8 @@ def parse_pdf(path: str | Path) -> list[PageText]:
     text_characters = sum(len(page.text) for page in pages)
     if not pages or text_characters < max(50, len(pages) * 10):
         raise PdfExtractionError(
-            "PDF 中没有足够的可提取文本，可能是扫描版或受保护文件。"
+            "The PDF does not contain enough extractable text. "
+            "It may be scanned or protected."
         )
     return pages
 
@@ -95,7 +96,7 @@ def chunk_pages(
 
 
 def _split_units(text: str, target_chars: int) -> list[str]:
-    sentences = re.split(r"(?<=[。！？!?；;\n])", text)
+    sentences = re.split(r"(?<=[\u3002\uff01\uff1f!?\uff1b;\n])", text)
     units: list[str] = []
     for sentence in sentences:
         sentence = sentence.strip()

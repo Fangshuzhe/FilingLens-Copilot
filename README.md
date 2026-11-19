@@ -2,42 +2,43 @@
 
 ![FilingLens logo](assets/filinglens-logo.png)
 
-Evidence-first annual report research copilot.
+An evidence-first annual report research copilot.
 
-FilingLens Copilot 将上市公司年报转化为有出处、可追问、可导出的研究结论。
+FilingLens turns lengthy public-company reports into traceable, searchable, comparable, and exportable research findings.
 
-核心原则：
+> Every key conclusion should trace back to the source report. Every number should be calculated by code.
 
-> 每个关键结论都能回到年报原文，每个数字都由程序计算。
+## Features
 
-## 当前能力
+- Clean chat-first interface with a compact sidebar
+- General conversation without uploading a report
+- Streaming responses in General Chat
+- Local SQLite conversation history that survives page refreshes
+- Conversation history with reopen and delete actions
+- PDF annual-report upload and page-aware text parsing
+- SQLite storage with no MySQL requirement
+- BM25 evidence retrieval for English and Chinese documents
+- OpenAI Chat Completions-compatible model integration
+- Structured company research briefs
+- Evidence IDs linked to source pages
+- Citation validation and insufficient-evidence refusal
+- PDF page preview with attempted source-text highlighting
+- Financial fact discovery and source-table extraction
+- Year-over-year annual-report change analysis
+- Two-company comparison
+- Research Board with Markdown and HTML export
 
-- 简洁侧栏与底部输入框的对话式界面
-- 不上传年报也可直接与大模型对话
-- 通用对话支持流式输出
-- 对话自动保存到 SQLite，刷新页面后可恢复
-- 历史对话支持重新打开和删除
-- PDF 年报上传与分页文本解析
-- SQLite 本地存储，无需 MySQL
-- 中文友好的 BM25 证据检索
-- 兼容 OpenAI Chat Completions 接口的大模型问答
-- 八维度结构化研究底稿
-- 结论与原文页码绑定
-- 引用校验与证据不足拒答
-- PDF 原页预览与引用文本高亮
-- 财务事实定位与原文表格提取
-- 连续年度年报变化雷达
-- 双公司研究对比
-- 研究板收藏与 Markdown/HTML 简报导出
+The model answers in the same language as the user's latest question. English questions receive English answers.
 
-当前限制：
+## Current Limitations
 
-- 扫描版 PDF 尚未接入 OCR，上传后会提示缺少文本层。
-- 财务事实卡用于定位原文披露，不会自动合并不同口径的数据。
+- Scanned PDFs without a text layer are not yet processed with OCR.
+- Financial facts are source-location aids; values with different definitions are not combined automatically.
+- Streamlit Community Cloud uses ephemeral storage unless an external database is connected.
 
-## 运行
+## Run Locally
 
-建议使用 Python 3.11 或更高版本。
+Python 3.11 or newer is recommended.
 
 ```powershell
 python -m venv .venv
@@ -45,32 +46,32 @@ python -m venv .venv
 python -m pip install -e ".[dev]"
 ```
 
-设置模型配置：
+Configure a model:
 
 ```powershell
-$env:LLM_BASE_URL = "https://api.openai.com/v1"
-$env:LLM_API_KEY = "your-api-key"
-$env:LLM_MODEL = "gpt-4.1-mini"
+$env:LLM_BASE_URL = "https://openrouter.ai/api/v1"
+$env:LLM_API_KEY = "your-openrouter-key"
+$env:LLM_MODEL = "baidu/ernie-5.5-flash-preview:free"
 ```
 
-启动应用：
+Start the application:
 
 ```powershell
 streamlit run app.py
 ```
 
-也可以复制 `.env.example` 为 `.env` 后填写模型配置。
+You can also copy `.env.example` to `.env` and fill in the values.
 
 ## Streamlit Community Cloud
 
-部署参数：
+Deployment settings:
 
-- Repository：`Fangshuzhe/FilingLens-Copilot`
-- Branch：`main`
-- Main file path：`app.py`
-- Python：`3.12`
+- Repository: `Fangshuzhe/FilingLens-Copilot`
+- Branch: `main`
+- Main file path: `app.py`
+- Python: `3.12`
 
-在 Streamlit Cloud 的 App settings → Secrets 中填写：
+Add the following values under App settings → Secrets:
 
 ```toml
 LLM_BASE_URL = "https://openrouter.ai/api/v1"
@@ -80,46 +81,76 @@ LLM_TIMEOUT_SECONDS = "120"
 FILINGLENS_DATA_DIR = "/tmp/filinglens"
 ```
 
-Streamlit Community Cloud 的文件系统是临时的。应用重启后，本地 SQLite
-中的对话和研究数据可能被清除；若需要永久保存，应接入 Supabase、Turso
-或 PostgreSQL 等托管数据库。
+Community Cloud storage is temporary. Conversations and uploaded reports may be cleared after an instance restart. Use a managed database such as Supabase, Turso, or PostgreSQL when durable storage is required.
 
-## 测试
+## Tests
 
 ```powershell
 python -m pytest
 ```
 
-## 项目结构
+## Project Structure
 
 ```text
-app.py                    Streamlit 界面
+app.py                    Streamlit application
 filinglens/
-  db.py                   SQLite 数据层
-  financial.py            财务事实定位
-  llm.py                  OpenAI 兼容模型客户端
-  models.py               核心数据模型
-  parser.py               PDF 解析与切分
-  pdf_preview.py          PDF 原页渲染与引用高亮
-  reporting.py            Markdown/HTML 报告导出
-  retrieval.py            中文 BM25 检索
-  service.py              问答、变化分析、公司对比与证据校验
-  tables.py               PDF 表格提取
-tests/                    自动化测试
-data/                     本地数据库、上传文件和运行时数据
+  db.py                   SQLite data layer
+  financial.py            Financial fact discovery
+  llm.py                  OpenAI-compatible model client
+  models.py               Core data models
+  parser.py               PDF parsing and chunking
+  pdf_preview.py          PDF page rendering and highlighting
+  reporting.py            Markdown and HTML export
+  retrieval.py            BM25 retrieval
+  service.py              Q&A, change analysis, comparison, validation
+  tables.py               PDF table extraction
+tests/                    Automated tests
+data/                     Local runtime data
 ```
 
-## 产品文档
+## Product Documentation
 
-- [产品方案](企业年报研究Copilot项目方案.md)
+- [Product plan](PRODUCT_PLAN.md)
 
-## 品牌资产
+## Brand Assets
 
-- `assets/filinglens-mark.svg`：应用图标矢量源文件
-- `assets/filinglens-logo.svg`：横向品牌组合矢量源文件
-- `assets/filinglens-logo-inverse.svg`：深色背景版本
-- `assets/*.png`：GitHub 和文档预览版本
+- `assets/filinglens-mark.svg`: vector application icon
+- `assets/filinglens-logo.svg`: horizontal light-background logo
+- `assets/filinglens-logo-inverse.svg`: dark-background logo
+- `assets/*.png`: preview exports
 
-## 产品边界
+## Scope
+
+FilingLens provides company research assistance. It does not provide buy, sell, or investment recommendations.
+
+---
+
+# FilingLens Copilot 中文说明
+
+FilingLens 是一个证据优先的企业年报研究工作台，可将长篇上市公司年报转化为可追溯、可追问、可比较和可导出的研究结论。
+
+核心能力：
+
+- 无需上传年报即可直接对话
+- 流式回答、会话持久化、历史会话重开与删除
+- PDF 年报解析、页码保留和证据检索
+- 带页码与原文引用的年报问答
+- 结构化公司研究底稿
+- 财务事实定位和原始表格提取
+- 连续年度变化分析
+- 双公司对比
+- 研究板以及 Markdown/HTML 报告导出
+- 英文提问时使用英文回答
+
+本地运行：
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+streamlit run app.py
+```
+
+Streamlit Community Cloud 的文件系统为临时存储。若需长期保存对话和年报，应接入 Supabase、Turso 或 PostgreSQL。
 
 本项目提供企业研究辅助，不提供股票买卖建议。

@@ -253,16 +253,16 @@ def render_evidence(
 ) -> None:
     source_report = reports_by_id.get(evidence.report_id)
     source = (
-        f"{evidence.company or source_report.company} · "
-        f"{evidence.year or source_report.year} · 第 {evidence.page_number} 页"
+        f"{evidence.company or source_report.company} | "
+        f"{evidence.year or source_report.year} | Page {evidence.page_number}"
         if source_report
-        else f"第 {evidence.page_number} 页"
+        else f"Page {evidence.page_number}"
     )
     st.markdown(f"**{evidence.evidence_id}｜{source}**")
     st.markdown(f"> {evidence.text.replace(chr(10), '  ')}")
 
     if source_report and Path(source_report.file_path).exists():
-        with st.popover("查看 PDF 原页"):
+        with st.popover("View PDF page"):
             image = get_page_image(
                 source_report.file_path,
                 Path(source_report.file_path).stat().st_mtime,
@@ -281,7 +281,7 @@ def render_claim(
     key_prefix: str,
 ) -> None:
     citations = " ".join(f"`{item}`" for item in claim.evidence_ids)
-    label = "年报事实" if claim.kind == "annual_report_fact" else "模型判断"
+    label = "Annual report fact" if claim.kind == "annual_report_fact" else "Model judgment"
     selected_evidence = [
         item for item in evidence if item.evidence_id in claim.evidence_ids
     ]
@@ -295,12 +295,12 @@ def render_claim(
                 and anchor_report.company
                 and item.company != anchor_report.company
             ):
-                st.caption(f"{item.evidence_id} · {item.company} · 第 {item.page_number} 页")
+                st.caption(f"{item.evidence_id} | {item.company} | Page {item.page_number}")
             else:
-                st.caption(f"{item.evidence_id} · 第 {item.page_number} 页")
+                st.caption(f"{item.evidence_id} | Page {item.page_number}")
     with right:
         if st.button(
-            "收藏",
+            "Save",
             key=(
                 f"{key_prefix}-save-"
                 f"{_text_digest(claim.text)}"
@@ -312,7 +312,7 @@ def render_claim(
                 evidence=selected_evidence,
                 kind=claim.kind,
             )
-            st.toast("已加入研究板")
+            st.toast("Saved to Research Board")
 
 
 def render_answer(
@@ -325,7 +325,7 @@ def render_answer(
     if answer.status == "insufficient_evidence":
         st.warning(answer.summary)
         for item in answer.missing:
-            st.caption(f"缺失：{item}")
+            st.caption(f"Missing: {item}")
         return
 
     if answer.status != "answered":
@@ -361,7 +361,7 @@ def render_answer(
                 key_prefix=f"{key_prefix}-{claim_index}",
             )
 
-    with st.expander("查看全部原文证据与 PDF 原页"):
+    with st.expander("View all evidence and PDF pages"):
         for item in answer.evidence:
             render_evidence(item, reports_by_id=reports_by_id)
 
@@ -376,7 +376,7 @@ def render_download_pair(
     markdown_column, html_column = st.columns(2)
     with markdown_column:
         st.download_button(
-            "下载 Markdown",
+            "Download Markdown",
             data=markdown_text,
             file_name=f"{file_stem}.md",
             mime="text/markdown",
@@ -384,7 +384,7 @@ def render_download_pair(
         )
     with html_column:
         st.download_button(
-            "下载 HTML",
+            "Download HTML",
             data=markdown_to_html(markdown_text, title=title),
             file_name=f"{file_stem}.html",
             mime="text/html",
@@ -406,8 +406,8 @@ def render_general_chat(
             f"""
             <div class="fl-welcome">
               <img class="fl-welcome-mark" src="{logo_uri}" alt="FilingLens">
-              <h1>有什么可以帮你研究？</h1>
-              <p>直接讨论商业模式、财务指标、行业研究或数据分析。上传年报后，也可以切换到证据问答和研究工具。</p>
+              <h1>What can I help you research?</h1>
+              <p>Discuss business models, financial metrics, industries, or data analysis. Upload an annual report to unlock evidence Q&A and research tools.</p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -416,7 +416,7 @@ def render_general_chat(
     for message in messages:
         _render_chat_message(message.role, message.content)
 
-    question = st.chat_input("给 FilingLens 发送消息")
+    question = st.chat_input("Message FilingLens")
     if question:
         prior_messages = [
             {"role": message.role, "content": message.content}
@@ -460,7 +460,7 @@ def _render_chat_message(role: str, content: str) -> None:
             f"""
             <div class="fl-user-row">
               <div class="fl-user-text">{safe_content}</div>
-              <div class="fl-user-avatar" aria-label="用户头像">
+              <div class="fl-user-avatar" aria-label="User avatar">
                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <circle cx="12" cy="8" r="4" fill="none" stroke="#FFFFFF" stroke-width="2"/>
                   <path d="M4.8 20c.8-4 3.5-6 7.2-6s6.4 2 7.2 6" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
@@ -478,8 +478,8 @@ def render_brief(
     reports_by_id: dict[int, Report],
 ) -> None:
     brief_key = f"brief-{report.id}"
-    if st.button("生成公司研究底稿", type="primary"):
-        with st.spinner("正在按八个维度检索年报并生成研究底稿..."):
+    if st.button("Generate Research Brief", type="primary"):
+        with st.spinner("Retrieving evidence and generating the research brief..."):
             try:
                 st.session_state[brief_key] = service.generate_company_brief(
                     report_id=report.id
@@ -504,12 +504,12 @@ def render_brief(
             )
             render_download_pair(
                 markdown_text=markdown_text,
-                title=f"{report.company} {report.year} 公司研究简报",
-                file_stem=f"{report.company}-{report.year}-公司研究简报",
+                title=f"{report.company} {report.year} Company Research Brief",
+                file_stem=f"{report.company}-{report.year}-research-brief",
                 key=f"brief-download-{report.id}",
             )
     else:
-        st.info("系统会从业务、收入、客户、壁垒、增长、风险等维度生成结构化底稿。")
+        st.info("Generate a structured brief covering business, revenue, customers, moats, growth, and risk.")
 
 
 def render_research_chat(
@@ -522,17 +522,17 @@ def render_research_chat(
 
     with st.form(f"qa-form-{report.id}"):
         question = st.text_area(
-            "研究问题",
-            placeholder="例如：公司收入增长主要来自哪里？",
+            "Research question",
+            placeholder="For example: Where did revenue growth come from?",
             key=question_key,
         )
-        submitted = st.form_submit_button("开始分析", type="primary")
+        submitted = st.form_submit_button("Analyze", type="primary")
 
     if submitted:
         if not question.strip():
-            st.warning("请输入研究问题。")
+            st.warning("Enter a research question.")
         else:
-            with st.spinner("正在检索证据并生成回答..."):
+            with st.spinner("Retrieving evidence and generating an answer..."):
                 try:
                     st.session_state[answer_key] = service.ask(
                         report_id=report.id,
@@ -551,7 +551,7 @@ def render_research_chat(
         )
     else:
         st.caption(
-            "建议问题：公司靠什么赚钱？增长来自哪里？主要风险是什么？"
+            "Suggested questions: How does the company make money? What drives growth? What are the main risks?"
         )
 
 
@@ -562,19 +562,19 @@ def render_financial_facts(
     pages = get_database().list_pages(report.id)
     facts = extract_financial_facts(pages)
     st.caption(
-        "以下内容按关键词和数字规则从原文中提取，仅用于快速定位，"
-        "不对不同口径的数据自动相加或计算。"
+        "Financial facts are extracted from the source with keyword and number rules "
+        "to support fast verification. Values with different definitions are not combined."
     )
     if not facts:
-        st.info("没有识别到包含明确数字的财务事实。")
+        st.info("No financial facts with explicit figures were detected.")
         return
 
     st.dataframe(
         [
             {
-                "指标": item.metric,
-                "原文数值": "、".join(item.values),
-                "页码": item.page_number,
+                "Metric": item.metric,
+                "Reported value": ", ".join(item.values),
+                "Page": item.page_number,
             }
             for item in facts
         ],
@@ -584,13 +584,13 @@ def render_financial_facts(
 
     for index, fact in enumerate(facts):
         with st.expander(
-            f"{fact.metric}｜{ '、'.join(fact.values) }｜第 {fact.page_number} 页"
+            f"{fact.metric} | {', '.join(fact.values)} | Page {fact.page_number}"
         ):
             st.write(fact.context)
             evidence = _financial_evidence(report, fact, index)
             render_evidence(evidence, reports_by_id=reports_by_id)
             if st.button(
-                "加入研究板",
+                "Save to Research Board",
                 key=f"financial-save-{report.id}-{index}",
             ):
                 get_database().add_insight(
@@ -599,7 +599,7 @@ def render_financial_facts(
                     evidence=[evidence],
                     kind="annual_report_fact",
                 )
-                st.toast("财务事实已加入研究板")
+                st.toast("Financial fact saved to Research Board")
 
     pages_with_facts = sorted({item.page_number for item in facts})
     tables = extract_tables(
@@ -607,10 +607,10 @@ def render_financial_facts(
         page_numbers=pages_with_facts,
     )
     if tables:
-        st.markdown("### 相关原文表格")
+        st.markdown("### Related Source Tables")
         for table_index, table in enumerate(tables):
             with st.expander(
-                f"表格 {table_index + 1}｜第 {table.page_number} 页"
+                f"Table {table_index + 1} | Page {table.page_number}"
             ):
                 st.dataframe(
                     table.rows,
@@ -632,21 +632,21 @@ def render_change_radar(
         and item.year < report.year
     ]
     if not previous_reports:
-        st.info("请先上传同一家公司较早年份的年报，才能生成变化雷达。")
+        st.info("Upload an earlier annual report for the same company to compare changes.")
         return
 
     labels = {
-        item.id: f"{item.year} · {item.filename}"
+        item.id: f"{item.year} | {item.filename}"
         for item in previous_reports
     }
     previous_id = st.selectbox(
-        "选择较早年报",
+        "Select previous annual report",
         options=list(labels),
         format_func=lambda item_id: labels[item_id],
     )
     state_key = f"change-{report.id}-{previous_id}"
-    if st.button("分析年度变化", type="primary"):
-        with st.spinner("正在比较两个年度年报..."):
+    if st.button("Analyze Year-over-Year Changes", type="primary"):
+        with st.spinner("Comparing the two annual reports..."):
             try:
                 st.session_state[state_key] = service.compare_annual_reports(
                     current_report_id=report.id,
@@ -657,7 +657,7 @@ def render_change_radar(
 
     change_report = st.session_state.get(state_key)
     if not change_report:
-        st.caption("重点比较业务表述、收入结构、市场竞争和风险因素的变化。")
+        st.caption("Compares business disclosures, revenue mix, competition, and risk factors.")
         return
     if change_report.status != "answered":
         st.warning(change_report.summary)
@@ -670,11 +670,11 @@ def render_change_radar(
         with st.container(border=True):
             st.markdown(f"#### {item.dimension}｜{item.change_type}")
             previous_column, current_column = st.columns(2)
-            previous_column.markdown("**上一年度**")
+            previous_column.markdown("**Previous year**")
             previous_column.write(item.previous)
-            current_column.markdown("**本年度**")
+            current_column.markdown("**Current year**")
             current_column.write(item.current)
-            st.caption("证据：" + " ".join(item.evidence_ids))
+            st.caption("Evidence: " + " ".join(item.evidence_ids))
 
             selected = [
                 evidence
@@ -682,7 +682,7 @@ def render_change_radar(
                 if evidence.evidence_id in item.evidence_ids
             ]
             if st.button(
-                "加入研究板",
+                "Save to Research Board",
                 key=f"change-save-{report.id}-{previous_id}-{index}",
             ):
                 get_database().add_insight(
@@ -691,9 +691,9 @@ def render_change_radar(
                     evidence=selected,
                     kind="model_judgment",
                 )
-                st.toast("变化结论已加入研究板")
+                st.toast("Change finding saved to Research Board")
 
-    with st.expander("查看变化分析证据"):
+    with st.expander("View change-analysis evidence"):
         for evidence in change_report.evidence:
             render_evidence(evidence, reports_by_id=reports_by_id)
 
@@ -704,8 +704,8 @@ def render_change_radar(
     )
     render_download_pair(
         markdown_text=markdown_text,
-        title=f"{report.company} 年报变化雷达",
-        file_stem=f"{report.company}-{report.year}-年报变化",
+        title=f"{report.company} Annual Report Change Radar",
+        file_stem=f"{report.company}-{report.year}-report-change",
         key=f"change-download-{report.id}-{previous_id}",
     )
 
@@ -722,21 +722,21 @@ def render_company_comparison(
         if item.company.strip() != report.company.strip()
     ]
     if not other_reports:
-        st.info("请先上传至少另一家公司的年报。")
+        st.info("Upload at least one annual report from another company.")
         return
 
     labels = {
-        item.id: f"{item.company} · {item.year} · {item.filename}"
+        item.id: f"{item.company} | {item.year} | {item.filename}"
         for item in other_reports
     }
     other_id = st.selectbox(
-        "选择对比公司年报",
+        "Select comparison company report",
         options=list(labels),
         format_func=lambda item_id: labels[item_id],
     )
     state_key = f"comparison-{report.id}-{other_id}"
-    if st.button("生成公司对比", type="primary"):
-        with st.spinner("正在从两家公司年报中检索并对比..."):
+    if st.button("Generate Company Comparison", type="primary"):
+        with st.spinner("Retrieving evidence from both companies and comparing..."):
             try:
                 st.session_state[state_key] = service.compare_companies(
                     report_a_id=report.id,
@@ -747,7 +747,7 @@ def render_company_comparison(
 
     answer = st.session_state.get(state_key)
     if not answer:
-        st.caption("按商业模式、收入结构、增长、壁垒和风险生成对比矩阵。")
+        st.caption("Compares business model, revenue mix, growth, moats, and risk.")
         return
     render_answer(
         answer=answer,
@@ -775,19 +775,19 @@ def render_research_board(
 ) -> None:
     insights = get_database().list_insights(report.id)
     if not insights:
-        st.info("研究板为空。问答、研究底稿和变化分析中的结论可以加入这里。")
+        st.info("The Research Board is empty. Save conclusions from Q&A, briefs, or change analysis.")
         return
 
     for insight in insights:
-        label = "年报事实" if insight.kind == "annual_report_fact" else "模型判断"
+        label = "Annual report fact" if insight.kind == "annual_report_fact" else "Model judgment"
         with st.container(border=True):
             st.markdown(f"**{label}**　{insight.text}")
             for evidence in insight.evidence:
                 st.caption(
                     f"{evidence.evidence_id}｜{evidence.company or report.company}"
-                    f"｜第 {evidence.page_number} 页"
+                    f" | Page {evidence.page_number}"
                 )
-                with st.expander(f"查看证据 {evidence.evidence_id}"):
+                with st.expander(f"View evidence {evidence.evidence_id}"):
                     render_evidence(evidence, reports_by_id=reports_by_id)
 
     markdown_text = company_report_to_markdown(
@@ -796,30 +796,30 @@ def render_research_board(
     )
     render_download_pair(
         markdown_text=markdown_text,
-        title=f"{report.company} 研究板简报",
-        file_stem=f"{report.company}-{report.year}-研究板简报",
+        title=f"{report.company} Research Board Brief",
+        file_stem=f"{report.company}-{report.year}-research-board-brief",
         key=f"board-download-{report.id}",
     )
 
 
 def render_upload(*, expanded: bool) -> None:
-    with st.sidebar.expander("添加企业年报", expanded=expanded):
+    with st.sidebar.expander("Add Annual Report", expanded=expanded):
         with st.form("upload-report"):
-            company = st.text_input("公司名称")
+            company = st.text_input("Company name")
             year = st.number_input(
-                "年报年份",
+                "Report year",
                 min_value=1990,
                 max_value=2100,
                 value=2025,
                 step=1,
             )
-            uploaded_file = st.file_uploader("选择 PDF", type=["pdf"])
-            submitted = st.form_submit_button("解析并入库")
+            uploaded_file = st.file_uploader("Select PDF", type=["pdf"])
+            submitted = st.form_submit_button("Parse and Index")
 
         if not submitted:
             return
         if not uploaded_file or not company.strip():
-            st.warning("请填写公司名称并选择 PDF。")
+            st.warning("Enter a company name and select a PDF.")
             return
 
         UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -828,7 +828,7 @@ def render_upload(*, expanded: bool) -> None:
         stored_path.write_bytes(uploaded_file.getbuffer())
 
         try:
-            with st.spinner("正在解析年报并建立检索索引..."):
+            with st.spinner("Parsing the annual report and building the search index..."):
                 pages = parse_pdf(stored_path)
                 chunks = chunk_pages(pages)
                 report_id = get_database().add_report(
@@ -846,8 +846,8 @@ def render_upload(*, expanded: bool) -> None:
 
         quality = extraction_quality(pages)
         st.success(
-            f"解析完成：{quality['page_count']} 页，"
-            f"{len(chunks)} 个检索片段。"
+            f"Parsed {quality['page_count']} pages and indexed "
+            f"{len(chunks)} search passages."
         )
         st.session_state["selected_report_id"] = report_id
 
@@ -863,9 +863,9 @@ def render_sidebar_brand() -> None:
         """,
         unsafe_allow_html=True,
     )
-    if st.sidebar.button("新建对话", use_container_width=True):
+    if st.sidebar.button("New Conversation", use_container_width=True):
         st.query_params["chat"] = uuid4().hex
-        st.session_state["main-view"] = "通用对话"
+        st.session_state["main-view"] = "General Chat"
         st.rerun()
 
 
@@ -875,7 +875,7 @@ def render_conversation_history(current_conversation_id: str) -> None:
         return
 
     st.sidebar.markdown(
-        '<div class="fl-label">历史对话</div>',
+        '<div class="fl-label">Conversations</div>',
         unsafe_allow_html=True,
     )
     for conversation in conversations[:20]:
@@ -883,7 +883,7 @@ def render_conversation_history(current_conversation_id: str) -> None:
         if len(title) > 24:
             title = f"{title[:24]}…"
         if conversation.conversation_id == current_conversation_id:
-            label = f"当前 · {title}"
+            label = f"Current | {title}"
         else:
             label = title
         label_column, menu_column = st.sidebar.columns([5, 1])
@@ -894,13 +894,13 @@ def render_conversation_history(current_conversation_id: str) -> None:
                 use_container_width=True,
             ):
                 st.query_params["chat"] = conversation.conversation_id
-                st.session_state["main-view"] = "通用对话"
+                st.session_state["main-view"] = "General Chat"
                 st.rerun()
         with menu_column:
             with st.popover("⋯", use_container_width=True):
                 st.caption(title)
                 if st.button(
-                    "删除对话",
+                    "Delete conversation",
                     key=f"delete-{conversation.conversation_id}",
                     type="primary",
                     use_container_width=True,
@@ -922,17 +922,17 @@ def render_sidebar_navigation(
 ) -> tuple[Report, str]:
     reports_by_id = {item.id: item for item in reports}
     report_labels = {
-        item.id: f"{item.company} · {item.year}"
+        item.id: f"{item.company} | {item.year}"
         for item in reports
     }
     report_ids = list(report_labels)
 
     st.sidebar.markdown(
-        '<div class="fl-label">当前文档</div>',
+        '<div class="fl-label">Current document</div>',
         unsafe_allow_html=True,
     )
     selected_id = st.sidebar.selectbox(
-        "当前文档",
+        "Current document",
         options=report_ids,
         format_func=lambda item_id: report_labels[item_id],
         index=_selected_report_index(report_ids),
@@ -941,19 +941,19 @@ def render_sidebar_navigation(
     st.session_state["selected_report_id"] = selected_id
 
     st.sidebar.markdown(
-        '<div class="fl-label">研究工具</div>',
+        '<div class="fl-label">Research tools</div>',
         unsafe_allow_html=True,
     )
     view = st.sidebar.radio(
-        "研究工具",
+        "Research tools",
         options=[
-            "通用对话",
-            "研究底稿",
-            "证据问答",
-            "财务事实",
-            "年报变化",
-            "公司对比",
-            "研究板",
+            "General Chat",
+            "Research Brief",
+            "Evidence Q&A",
+            "Financial Facts",
+            "Year-over-Year",
+            "Company Comparison",
+            "Research Board",
         ],
         key="main-view",
         label_visibility="collapsed",
@@ -974,16 +974,16 @@ def main() -> None:
     try:
         service = get_service()
     except LLMConfigurationError as exc:
-        st.error(f"{exc}。请先配置模型。")
+        st.error(f"{exc}. Configure the model first.")
         service = None
     except Exception as exc:
-        st.error(f"模型初始化失败：{exc}")
+        st.error(f"Model initialization failed: {exc}")
         service = None
 
     if not reports:
-        st.sidebar.caption("上传年报后可解锁证据问答和研究工具。")
+        st.sidebar.caption("Upload an annual report to unlock evidence Q&A and research tools.")
         if service is None:
-            st.error("通用对话需要先配置大模型。")
+            st.error("General Chat requires a configured model.")
         else:
             render_general_chat(
                 service,
@@ -994,36 +994,36 @@ def main() -> None:
     report, view = render_sidebar_navigation(reports=reports)
     reports_by_id = {item.id: item for item in reports}
     st.sidebar.caption(
-        f"{report.filename} · {report.page_count} 页"
+        f"{report.filename} | {report.page_count} pages"
     )
 
-    if view == "通用对话":
+    if view == "General Chat":
         if service is None:
-            st.error("通用对话需要先配置模型。")
+            st.error("General Chat requires a configured model.")
         else:
             render_general_chat(
                 service,
                 conversation_id=conversation_id,
             )
-    elif view == "研究底稿":
-        st.subheader("研究底稿")
+    elif view == "Research Brief":
+        st.subheader("Research Brief")
         if service is None:
-            st.info("配置模型后可生成结构化底稿。")
+            st.info("Configure a model to generate a structured research brief.")
         else:
             render_brief(service, report, reports_by_id)
-    elif view == "证据问答":
-        st.subheader("证据问答")
+    elif view == "Evidence Q&A":
+        st.subheader("Evidence Q&A")
         if service is None:
-            st.info("配置模型后可进行带证据引用的问答。")
+            st.info("Configure a model to ask questions with evidence citations.")
         else:
             render_research_chat(service, report, reports_by_id)
-    elif view == "财务事实":
-        st.subheader("财务事实")
+    elif view == "Financial Facts":
+        st.subheader("Financial Facts")
         render_financial_facts(report, reports_by_id)
-    elif view == "年报变化":
-        st.subheader("年报变化")
+    elif view == "Year-over-Year":
+        st.subheader("Year-over-Year Changes")
         if service is None:
-            st.info("配置模型后可分析连续年度变化。")
+            st.info("Configure a model to analyze changes across annual reports.")
         else:
             render_change_radar(
                 service,
@@ -1031,10 +1031,10 @@ def main() -> None:
                 reports,
                 reports_by_id,
             )
-    elif view == "公司对比":
-        st.subheader("公司对比")
+    elif view == "Company Comparison":
+        st.subheader("Company Comparison")
         if service is None:
-            st.info("配置模型后可生成公司对比。")
+            st.info("Configure a model to compare two companies.")
         else:
             render_company_comparison(
                 service,
@@ -1042,8 +1042,8 @@ def main() -> None:
                 reports,
                 reports_by_id,
             )
-    elif view == "研究板":
-        st.subheader("研究板")
+    elif view == "Research Board":
+        st.subheader("Research Board")
         render_research_board(report, reports_by_id)
 
 

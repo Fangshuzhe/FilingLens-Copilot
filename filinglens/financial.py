@@ -9,21 +9,49 @@ from filinglens.models import PageText
 NUMBER_RE = re.compile(
     r"(?<![A-Za-z0-9])"
     r"[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?"
-    r"\s*(?:%|％|亿元|万元|千元|元|亿|万)?"
+    r"\s*(?:%|\uff05|\u4ebf\u5143|\u4e07\u5143|\u5343\u5143|\u5143|\u4ebf|\u4e07)?"
 )
 
 METRIC_TERMS: dict[str, tuple[str, ...]] = {
-    "营业收入": ("营业收入", "营业总收入", "销售收入", "revenue"),
-    "净利润": ("净利润", "归母净利润", "net profit", "net income"),
-    "毛利率": ("毛利率", "gross margin", "gross profit margin"),
-    "研发投入": ("研发投入", "研发费用", "research and development"),
-    "经营现金流": (
-        "经营活动产生的现金流量净额",
-        "经营现金流",
-        "operating cash flow",
+    "Revenue": (
+        "revenue",
+        "sales",
+        "\u8425\u4e1a\u6536\u5165",
+        "\u8425\u4e1a\u603b\u6536\u5165",
+        "\u9500\u552e\u6536\u5165",
     ),
-    "资产总额": ("资产总额", "总资产", "total assets"),
-    "负债总额": ("负债总额", "总负债", "total liabilities"),
+    "Net profit": (
+        "net profit",
+        "net income",
+        "\u51c0\u5229\u6da6",
+        "\u5f52\u6bcd\u51c0\u5229\u6da6",
+    ),
+    "Gross margin": (
+        "gross margin",
+        "gross profit margin",
+        "\u6bdb\u5229\u7387",
+    ),
+    "R&D investment": (
+        "research and development",
+        "r&d",
+        "\u7814\u53d1\u6295\u5165",
+        "\u7814\u53d1\u8d39\u7528",
+    ),
+    "Operating cash flow": (
+        "operating cash flow",
+        "\u7ecf\u8425\u6d3b\u52a8\u4ea7\u751f\u7684\u73b0\u91d1\u6d41\u91cf\u51c0\u989d",
+        "\u7ecf\u8425\u73b0\u91d1\u6d41",
+    ),
+    "Total assets": (
+        "total assets",
+        "\u8d44\u4ea7\u603b\u989d",
+        "\u603b\u8d44\u4ea7",
+    ),
+    "Total liabilities": (
+        "total liabilities",
+        "\u8d1f\u503a\u603b\u989d",
+        "\u603b\u8d1f\u503a",
+    ),
 }
 
 
@@ -59,7 +87,7 @@ def extract_financial_facts(
                     continue
                 values = list(
                     dict.fromkeys(
-                        match.group(0)
+                        match.group(0).strip()
                         for match in NUMBER_RE.finditer(sentence)
                     )
                 )

@@ -305,7 +305,7 @@ class Database:
                             ORDER BY first_user.id
                             LIMIT 1
                         ),
-                        '新对话'
+                        'New conversation'
                     ) AS title,
                     MAX(messages.id) AS last_message_id,
                     COUNT(*) AS message_count,
